@@ -1,0 +1,35 @@
+set(sources
+  JupyterPlugin.cpp
+  PythonProcess.cpp
+  JupyterInterpreter.cpp
+  )
+set(headers
+  JupyterPlugin.h
+  PythonProcess.h
+  JupyterInterpreter.h
+  )
+add_definitions(-Wno-deprecated-declarations)
+add_definitions(-DIRSL_DEBUG)
+
+if(${CMAKE_CURRENT_SOURCE_DIR} STREQUAL ${CMAKE_SOURCE_DIR})
+  # Build as a master project
+  cmake_minimum_required(VERSION 3.10)
+  project(JupyterPlugin)
+  find_package(Choreonoid REQUIRED)
+  set(CMAKE_CXX_STANDARD ${CHOREONOID_CXX_STANDARD})
+  choreonoid_add_plugin(CnoidJupyterPlugin ${sources})
+  target_link_libraries(CnoidJupyterPlugin Choreonoid::CnoidBody)
+
+  # add_subdirectory(test)
+else()
+  Message ("Build : JupyterPlugin")
+  # Build as a bundled project
+  set(xeus_REQUIRED_VERSION 0.19.1)
+  set(cppzmq_REQUIRED_VERSION 4.3.0)
+  find_package(xeus ${xeus_REQUIRED_VERSION} REQUIRED)
+  find_package(cppzmq ${cppzmq_REQUIRED_VERSION} REQUIRED)
+  find_package(Threads)
+
+  choreonoid_add_plugin(CnoidJupyterPlugin ${sources} HEADERS ${headers})
+  target_link_libraries(CnoidJupyterPlugin CnoidUtil CnoidPythonPlugin xeus Threads::Threads)
+endif()
