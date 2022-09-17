@@ -8,6 +8,7 @@
 #include <cnoid/UTF8>
 #include <cnoid/stdx/filesystem>
 
+#include <thread>
 //#define IRSL_DEBUG
 #include "irsl_debug.h"
 
@@ -74,6 +75,13 @@ void PythonProcess::onSigOptionsParsed(po::variables_map& variables)
     DEBUG_PRINT();
     if(variables.count("jupyter-connection")) {
         connection_file = variables["jupyter-connection"].as<std::string>();
+        DEBUG_STREAM(" jupyter-connection:" << connection_file);
+
+        DEBUG_STREAM(" thread <<");
+        std::thread th_interp(&PythonProcess::interpreterThread, this);
+        th_interp.detach();
+        //interpreterThread();
+        DEBUG_STREAM(" thread >>");
     }
 }
 bool PythonProcess::initialize()
@@ -86,26 +94,18 @@ bool PythonProcess::initialize()
 
     python::gil_scoped_acquire lock;
 
-    DEBUG_STREAM(" a0 : " << PythonPlugin::instance());
     mainModule = PythonPlugin::instance()->mainModule();
-    DEBUG_STREAM(" a0-1 " << mainModule);
     globalNamespace = PythonPlugin::instance()->globalNamespace();
-    DEBUG_STREAM(" a0-2 " << globalNamespace);
     interpreter = python::module::import("code").attr("InteractiveConsole")(globalNamespace);
 
-    DEBUG_STREAM(" a1");
     pybind11::object consoleOutClass =
         pybind11::class_<PythonConsoleOut>(mainModule, "PythonConsoleOut2")
         .def(pybind11::init<>())
         .def("write", &PythonConsoleOut::write);
-    DEBUG_STREAM(" a1-1");
     consoleOut = consoleOutClass();
-    DEBUG_STREAM(" a1-2");
     PythonConsoleOut& consoleOut_ = consoleOut.cast<PythonConsoleOut&>();
-    DEBUG_STREAM(" a1-3");
     consoleOut_.setConsole(this);
 
-    DEBUG_STREAM(" a1-4");
     pybind11::object consoleErrClass =
         pybind11::class_<PythonConsoleErr>(mainModule, "PythonConsoleErr2")
         .def(pybind11::init<>())
@@ -122,11 +122,9 @@ bool PythonProcess::initialize()
     PythonConsoleIn& consoleIn_ = consoleIn.cast<PythonConsoleIn&>();
     consoleIn_.setConsole(this);
 
-    DEBUG_STREAM(" a2");
     sys = PythonPlugin::instance()->sysModule();
     python::object inspector_class = python::module::import("IPython").attr("core").attr("oinspect").attr("Inspector");
     inspector = inspector_class();
-
 #if 0
     python::object keyword = python::module::import("keyword");
     pybind11::list kwlist = pybind11::cast<pybind11::list>(keyword.attr("kwlist"));
@@ -134,8 +132,6 @@ bool PythonProcess::initialize()
         keywords.push_back(pybind11::cast<string>(kwlist[i]));
     }
 #endif
-
-    interpreterThread();
 
     return true;
 }
@@ -150,16 +146,21 @@ void PythonProcess::putCommand(const std::string &_com)
     orgStdout = sys.attr("stdout");
     orgStderr = sys.attr("stderr");
     orgStdin  = sys.attr("stdin");
+    out_strm.str("");
     out_strm.clear();
+    err_strm.str("");
     err_strm.clear();
     sys.attr("stdout") = consoleOut;
     sys.attr("stderr") = consoleErr;
     sys.attr("stdin")  = consoleIn;
 
     if(interpreter.attr("push")(_com).cast<bool>()) {
-        // ...
+        std::string ret("\n");
+        bool res = interpreter.attr("push")(ret).cast<bool>();
+        if (res) res = interpreter.attr("push")(ret).cast<bool>();
     } else  {
-        // >>>
+        // do nothing
+        DEBUG_STREAM(">>>");
     }
     if(PyErr_Occurred()){
         PyErr_Print();
@@ -171,7 +172,6 @@ void PythonProcess::putCommand(const std::string &_com)
 }
 void PythonProcess::interpreterThread()
 {
-    //
     if(connection_file.size() == 0) return;
 
     xeus::xconfiguration config = xeus::load_configuration(connection_file);
@@ -184,5 +184,6 @@ void PythonProcess::interpreterThread()
     // Create kernel instance and start it
     xeus::xkernel kernel(config, xeus::get_user_name(), std::move(context),
                          std::move(interpreter), xeus::make_xserver_zmq);
+
     kernel.start();
 }

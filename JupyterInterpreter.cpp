@@ -16,25 +16,23 @@ namespace cnoid
         DEBUG_STREAM(" > ec: " << execution_counter << ", silent: " << silent << ", store:" << store_history << ", stdin:" << allow_stdin);
         DEBUG_STREAM(" > " << code);
 
-        if(!impl) {
-            // error??
-            xeus::create_successful_reply();
+        if(!impl) { // error??
+            return xeus::create_successful_reply();
+        }
+        bool res;
+
+        if(code.size() > 0 && code[0] == '%') {
+            res = execute_choreonoid(execution_counter, code.substr(1), silent, store_history,
+                                     user_expressions, allow_stdin);
+        } else {
+            res = execute_python(execution_counter, code, silent, store_history,
+                                 user_expressions, allow_stdin);
         }
 
-        impl->putCommand(code);// enter?
-
-        nl::json pub_data;
-        pub_data["text/plain"] = impl->out_strm.str();
-        publish_execution_result(execution_counter, std::move(pub_data), nl::json::object());
-
-        // ???
-        std::string err_str = impl->err_strm.str();
-        if(err_str.size() > 0) {
-            //
-            publish_execution_error("TypeError", "123", {"!@#$", "*(*"});
+        if (res) {
+            return xeus::create_successful_reply();
         }
-
-        return xeus::create_successful_reply();
+        return xeus::create_successful_reply(); // [todo]
     }
 
     void JupyterInterpreter::configure_impl()
@@ -97,5 +95,38 @@ namespace cnoid
     void JupyterInterpreter::shutdown_request_impl()
     {
         DEBUG_PRINT();
+    }
+
+    bool JupyterInterpreter::execute_python(int execution_counter,
+                                            const std::string& code,
+                                            bool silent, bool store_history,
+                                            nl::json &user_expressions,
+                                            bool allow_stdin)
+    {
+        impl->putCommand(code);// enter?
+
+        nl::json pub_data;
+        std::string str = impl->out_strm.str();
+        DEBUG_STREAM("[" << str << "]");
+        if (str.size() > 0) {
+            pub_data["text/plain"] = str;
+            publish_execution_result(execution_counter, std::move(pub_data), nl::json::object());
+        }
+        // ???
+        std::string err_str = impl->err_strm.str();
+        if(err_str.size() > 0) {
+            std::vector<std::string> tb;
+            tb.push_back(err_str);
+            publish_execution_error("Error", "001", tb);
+        }
+        return true;
+    }
+    bool JupyterInterpreter::execute_choreonoid(int execution_counter,
+                                                const std::string& code,
+                                                bool silent, bool store_history,
+                                                nl::json &user_expressions,
+                                                bool allow_stdin)
+    {
+        return true;
     }
 }
