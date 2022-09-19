@@ -1,6 +1,6 @@
 #ifndef CNOID_JUPYTER_PLUGIN_PYTHON_PROCESS_H
 #define CNOID_JUPYTER_PLUGIN_PYTHON_PROCESS_H
-
+#include <QObject>
 #include <cnoid/PythonPlugin>
 #include <cnoid/OptionManager> //option
 #include <sstream>
@@ -9,8 +9,9 @@ namespace cnoid {
 
 class JupyterPlugin;
 
-class PythonProcess
+class PythonProcess : public QObject
 {
+    Q_OBJECT;
 public:
     PythonProcess(JupyterPlugin *_self) : self(_self)
     { self = _self; }
@@ -38,6 +39,12 @@ public:
     std::ostringstream out_strm;
     std::ostringstream err_strm;
     void interpreterThread();
+
+    QByteArray data;
+public Q_SLOTS:
+    void procComRequest(const QString &com);
+Q_SIGNALS:
+    void sendComRequest(const QString &msg);
 };
 }
 

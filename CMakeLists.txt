@@ -29,7 +29,11 @@ else()
   find_package(xeus ${xeus_REQUIRED_VERSION} REQUIRED)
   find_package(cppzmq ${cppzmq_REQUIRED_VERSION} REQUIRED)
   find_package(Threads)
-
+  ## for Qt signal
+  set(qtheaders PythonProcess.h)
+  QT5_WRAP_CPP(qtsources ${qtheaders})
+  set(sources ${sources} ${qtsources})
+  ##
   choreonoid_add_plugin(CnoidJupyterPlugin ${sources} HEADERS ${headers})
   target_link_libraries(CnoidJupyterPlugin CnoidUtil CnoidPythonPlugin xeus Threads::Threads)
 endif()

@@ -1,14 +1,20 @@
 #include "PythonProcess.h"
-
+#include "JupyterInterpreter.h"
+// xeus
 #include <xeus/xkernel.hpp>
 #include <xeus/xkernel_configuration.hpp>
 #include <xeus/xserver_zmq.hpp>
-#include "JupyterInterpreter.h"
-
+// cnoid
 #include <cnoid/UTF8>
 #include <cnoid/stdx/filesystem>
-
+// thread
 #include <thread>
+
+// command for choreonoid
+#include <QBuffer>
+#include <cnoid/SceneView>
+#include <cnoid/SceneWidget>
+
 //#define IRSL_DEBUG
 #include "irsl_debug.h"
 
@@ -133,6 +139,10 @@ bool PythonProcess::initialize()
     }
 #endif
 
+    connect(this, &PythonProcess::sendComRequest,
+            this, &PythonProcess::procComRequest,
+            Qt::BlockingQueuedConnection);  //Qt::DirectConnection);
+
     return true;
 }
 bool PythonProcess::finalize()
@@ -186,4 +196,22 @@ void PythonProcess::interpreterThread()
                          std::move(interpreter), xeus::make_xserver_zmq);
 
     kernel.start();
+}
+
+void PythonProcess::procComRequest(const QString &com)
+{
+    // [TODO] commander
+    if(com == "display") {
+        //SceneView *sv = SceneView::instance();
+        //std::vector<SceneView*> lst = SceneView::instances();
+        SceneWidget *sw = SceneView::instance()->sceneWidget();
+        QImage im = sw->getImage();
+        // debug
+        //im.save("/tmp/hoge.png");
+        data.clear();
+        QBuffer buf(&data);
+        buf.open(QIODevice::WriteOnly);
+        im.save(&buf, "png");
+        buf.close();
+    }
 }

@@ -1,6 +1,7 @@
 #include "JupyterInterpreter.h"
 #include <xeus/xhelper.hpp>
-
+#include <QString>
+#include <xtl/xbase64.hpp>
 #include "irsl_debug.h"
 
 namespace nl = nlohmann;
@@ -127,6 +128,15 @@ namespace cnoid
                                                 nl::json &user_expressions,
                                                 bool allow_stdin)
     {
-        return true;
+        if (code == "display") {
+            QString qmsg(code.c_str());
+            Q_EMIT impl->sendComRequest(qmsg);
+            DEBUG_SIMPLE(" display : " << impl->data.size());
+            nl::json pub_data;
+            pub_data["image/png"] = impl->data.toBase64().data();
+            publish_execution_result(execution_counter, std::move(pub_data), nl::json::object());
+            return true;
+        }
+        return false;
     }
 }
