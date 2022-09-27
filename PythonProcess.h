@@ -28,19 +28,21 @@ public:
     python::object orgStderr;
     python::object orgStdin;
     python::object interpreter;
-
     python::object inspector;
+    python::object token_at_cursor;
+    python::object jedi_Interpreter;//
 
     void onSigOptionsParsed(boost::program_options::variables_map& variables);
     bool initialize();
     bool finalize();
     void putCommand(const std::string &_com);
-
-    std::ostringstream out_strm;
-    std::ostringstream err_strm;
+    //void inspectObject(const std::string &obj_name);
+    python::object findObject(const std::string &obj_name);
     void interpreterThread();
 
     QByteArray data;
+    std::ostringstream out_strm;
+    std::ostringstream err_strm;
 public Q_SLOTS:
     void procComRequest(const QString &com);
 Q_SIGNALS:

@@ -45,26 +45,47 @@ namespace cnoid
                                                        int cursor_pos)
     {
         DEBUG_STREAM(" " << cursor_pos << " >>" << code);
-        return xeus::create_complete_reply({}, cursor_pos, cursor_pos);
-#if 0
-        if (code[0] == 'H')
-        {
-            return xeus::create_complete_reply({"Hello", "Hey", "Howdy"}, 5, cursor_pos);
+        python::gil_scoped_acquire lock;
+        std::vector<std::string> matches;
+        int cursor_start = cursor_pos;
+        std::string sub_code = code.substr(0, cursor_pos);
+        python::list completions = impl->jedi_Interpreter(sub_code, python::make_tuple(python::globals())).attr("complete")();
+
+        if (python::len(completions) != 0) {
+            cursor_start -= python::len(completions[0].attr("name_with_symbols")) - python::len(completions[0].attr("complete"));
+            for (python::handle completion : completions) {
+                matches.push_back(completion.attr("name_with_symbols").cast<std::string>());
+            }
         }
-        // No completion result
-        else
-        {
-            return xeus::create_complete_reply({}, cursor_pos, cursor_pos);
-        }
-#endif
+        nl::json res;
+        res["cursor_start"] = cursor_start;
+        res["cursor_end"] = cursor_pos;
+        res["matches"] = matches;
+        res["metadata"] = nl::json::object();
+        res["status"] = "ok";
+        return res;
     }
 
     nl::json JupyterInterpreter::inspect_request_impl(const std::string& code,
                                                       int cursor_pos,
                                                       int detail_level)
     {
-        DEBUG_STREAM(" " << detail_level << "/" << cursor_pos << " >>" << code);
-        return xeus::create_inspect_reply();
+        python::gil_scoped_acquire lock;
+
+        python::str res = impl->token_at_cursor(code, cursor_pos);
+        //DEBUG_STREAM(" " << detail_level << "/" << cursor_pos << " [" << code << "](" <<
+        //code.size() << ") : " << res);
+
+        python::object pobj = impl->findObject(res);
+        PyObject* pPyObject = pobj.ptr();
+        if(pPyObject == NULL) { // fail to find object
+            // DEBUG_STREAM(" t3 : (NULL) : " << pobj.is_none());
+            return xeus::create_inspect_reply();
+        }
+        else {
+            DEBUG_STREAM(" t3 : " << pobj.is_none());
+        }
+
 #if 0
         if (code.compare("print") == 0)
         {
