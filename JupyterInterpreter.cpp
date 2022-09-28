@@ -20,11 +20,19 @@ namespace cnoid
         if(!impl) { // error??
             return xeus::create_successful_reply();
         }
-        bool res;
+        bool res = false;
 
         if(code.size() > 0 && code[0] == '%') {
             res = execute_choreonoid(execution_counter, code.substr(1), silent, store_history,
                                      user_expressions, allow_stdin);
+        } else if(code.size() > 0 && code[0] == '?') {
+            python::object pobj_ = impl->findObject(code.substr(1));
+            if(pobj_.ptr() != NULL) {
+                python::dict pdic_ = impl->inspector.attr("_get_info")(pobj_);
+                nl::json pub_;
+                pub_["text/plain"] = pdic_["text/plain"].cast<std::string>();
+                publish_execution_result(execution_counter, std::move(pub_), nl::json::object());
+            }
         } else {
             res = execute_python(execution_counter, code, silent, store_history,
                                  user_expressions, allow_stdin);
@@ -72,31 +80,24 @@ namespace cnoid
     {
         python::gil_scoped_acquire lock;
 
-        python::str res = impl->token_at_cursor(code, cursor_pos);
+        python::str token_ = impl->token_at_cursor(code, cursor_pos);
         //DEBUG_STREAM(" " << detail_level << "/" << cursor_pos << " [" << code << "](" <<
-        //code.size() << ") : " << res);
+        //             code.size() << ") : " << token_);
 
-        python::object pobj = impl->findObject(res);
-        PyObject* pPyObject = pobj.ptr();
-        if(pPyObject == NULL) { // fail to find object
-            // DEBUG_STREAM(" t3 : (NULL) : " << pobj.is_none());
+        python::object pobj_ = impl->findObject(token_);
+        if(pobj_.ptr() == NULL) { // fail to find object
+            //DEBUG_STREAM(" fail");
             return xeus::create_inspect_reply();
+        } else {
+            python::dict pdic_ = impl->inspector.attr("_get_info")(pobj_);
+            nl::json res;
+            for(auto it = pdic_.begin(); it != pdic_.end(); it++) {
+                //DEBUG_STREAM(" " << it->first.cast<std::string>());
+                //DEBUG_STREAM(" " << it->second.cast<std::string>());
+                res[it->first.cast<std::string>()] = it->second.cast<std::string>();
+            }
+            return xeus::create_inspect_reply(true, res);
         }
-        else {
-            DEBUG_STREAM(" t3 : " << pobj.is_none());
-        }
-
-#if 0
-        if (code.compare("print") == 0)
-        {
-            return xeus::create_inspect_reply(true,
-                                              {"text/plain", "Print objects to the text stream file, [...]"});
-        }
-        else
-        {
-            return xeus::create_inspect_reply();
-        }
-#endif
     }
 
     nl::json JupyterInterpreter::is_complete_request_impl(const std::string& /*code*/)

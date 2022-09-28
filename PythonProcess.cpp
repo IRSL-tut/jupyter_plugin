@@ -84,11 +84,8 @@ void PythonProcess::onSigOptionsParsed(po::variables_map& variables)
         connection_file = variables["jupyter-connection"].as<std::string>();
         DEBUG_STREAM(" jupyter-connection:" << connection_file);
 
-        DEBUG_STREAM(" thread <<");
         std::thread th_interp(&PythonProcess::interpreterThread, this);
         th_interp.detach();
-        //interpreterThread();
-        DEBUG_STREAM(" thread >>");
     }
 }
 bool PythonProcess::initialize()
@@ -134,15 +131,8 @@ bool PythonProcess::initialize()
     inspector = inspector_class();
     //
     token_at_cursor = python::module::import("IPython.utils.tokenutil").attr("token_at_cursor");
-    token_at_cursor = python::module::import("IPython").attr("utils").attr("tokenutil").attr("token_at_cursor");
-    DEBUG_STREAM("token0 : " << token_at_cursor.is_none());
-    python::str str = token_at_cursor("", 1);
-    DEBUG_STREAM("token1 : " << str);
-    //token_at_cursor = python::module::import("IPython").attr("utils");
-    //token_at_cursor = token_at_cursor.attr("tokenutil").attr("token_at_cursor");
+    //token_at_cursor = python::module::import("IPython").attr("utils").attr("tokenutil").attr("token_at_cursor");
     jedi_Interpreter = python::module::import("jedi").attr("Interpreter");
-    //python::module::import("builtins").attr("__dict__")
-    //return jedi(code, python::make_tuple(python::globals()))
 #if 0
     python::object keyword = python::module::import("keyword");
     pybind11::list kwlist = pybind11::cast<pybind11::list>(keyword.attr("kwlist"));
@@ -226,6 +216,7 @@ void PythonProcess::procComRequest(const QString &com)
         buf.close();
     }
 }
+#if 0
 static bool getMemberNames(python::object& moduleObject, std::vector<std::string> &retNames)
 {
     PyObject* pPyObject = moduleObject.ptr();
@@ -241,7 +232,7 @@ static bool getMemberNames(python::object& moduleObject, std::vector<std::string
     }
     return true;
 }
-static python::object getMemberObject(std::vector<std::string>& moduleNames, python::object& parentObject)
+static python::object getMemberObjectOld(std::vector<std::string>& moduleNames, python::object& parentObject)
 {
     if(moduleNames.size() == 0) {
         return parentObject;
@@ -250,89 +241,60 @@ static python::object getMemberObject(std::vector<std::string>& moduleNames, pyt
         moduleNames.erase(moduleNames.begin());
         std::vector<std::string> memberNames;
         getMemberNames(parentObject, memberNames);
-#if 0
-        int i = 0;
-        for(auto it = memberNames.begin(); it != memberNames.end(); it++) {
-            DEBUG_STREAM(" mem " << i++ << " : " << *it);
-        }
-        DEBUG_STREAM(" mod : " << moduleName);
-#endif
+
         if(std::find(memberNames.begin(), memberNames.end(), moduleName) == memberNames.end()) {
             //DEBUG_STREAM(" failed : " << moduleName);
             return python::object();
         } else {
             python::object childObject = parentObject.attr(moduleName.c_str());
             //DEBUG_STREAM(" suc : " << moduleName << " / " << childObject.is_none());
-            return getMemberObject(moduleNames, childObject);
+            return getMemberObjectOld(moduleNames, childObject);
         }
     }
 }
-static python::object getNamedMemberObject(python::object& _moduleObject, std::string &_targetName)
+#endif
+inline static python::object getNamedMemberObject(python::object& _moduleObject, std::string &_targetName)
 {
-    PyObject* pPyObject = moduleObject.ptr();
+    PyObject* pPyObject = _moduleObject.ptr();
     if(pPyObject == NULL) {
-        return false;
+        return python::object();
     }
     pybind11::handle h( PyObject_Dir(pPyObject) );
     pybind11::list memberNames = h.cast<pybind11::list>();
     for (size_t i=0; i < python::len(memberNames); ++i ) {
         std::string nm_ = memberNames[i].cast<std::string>();
         if(_targetName == nm_) {
+            DEBUG_STREAM(" find : " << _targetName << " / " << nm_);
             return  _moduleObject.attr(_targetName.c_str());
         }
     }
     return python::object();
 }
+inline static python::object getMemberObject(std::vector<std::string>& moduleNames, python::object& parentObject)
+{
+    if(moduleNames.size() == 0) {
+        return parentObject;
+    } else {
+        std::string moduleName = moduleNames.front();
+        moduleNames.erase(moduleNames.begin());
+        python::object obj_ = getNamedMemberObject(parentObject, moduleName);
+        if(obj_.ptr() != NULL) {
+            return getMemberObject(moduleNames, obj_);
+        }
+        return obj_;
+    }
+}
 python::object PythonProcess::findObject(const std::string &obj_name)
 {
     std::vector<std::string> dottedStrings;
     boost::split(dottedStrings, obj_name, boost::is_any_of("."));
-    if(dottedStrings.size() == 1) {
-        //dottedStrings[0]
-        python::object res = getNamedMemberObject(mainModule, dottedStrings[0]);
-        if(res.ptr() == NULL) {
-            res = getNamedMemberObject(mainModule.attr("__builtins__"), dottedStrings[0]);
-        }
-        return res;
-    }
-
     python::object res = getMemberObject(dottedStrings, mainModule);
-
-    PyObject* pPyObject = targetMemberObject.ptr();
-    if(pPyObject == NULL) {
+    if(res.ptr() == NULL) {
+        DEBUG_STREAM(" " << obj_name << " : NULL");
         dottedStrings.resize(0);
         boost::split(dottedStrings, obj_name, boost::is_any_of("."));
-        targetMemberObject = getMemberObject(dottedStrings, mainModule);
+        python::object mod_ = mainModule.attr("__builtins__");
+        res = getMemberObject(dottedStrings, mod_);
     }
-
-    return targetMemberObject;
+    return res;
 }
-#if 0
-void PythonProcess::inspectObject(const std::string &obj_name)
-{
-    size_t maxSplitIdx = 0;
-    for(auto it = splitStringVec.begin(); it != splitStringVec.end(); ++it) {
-        size_t splitIdx = obj_name.find_last_of(*it);
-        maxSplitIdx = std::max(splitIdx == string::npos ? 0 : splitIdx + 1, maxSplitIdx);
-    }
-    std::string lastWord = obj_name.substr(maxSplitIdx);
-
-    std::vector<std::string> dottedStrings;
-    boost::split(dottedStrings, lastWord, boost::is_any_of("."));
-    //std::string lastDottedString = dottedStrings.back();// word after last dot
-    //std::vector<std::string> moduleNames = dottedStrings;// words before last dot
-
-    DEBUG_STREAM("in: " << obj_name);
-    for(int i = 0; i < dottedStrings.size(); i ++) {
-        DEBUG_STREAM("  " << i << ": " << dottedStrings[i]);
-    }
-    python::object targetMemberObject = getMemberObject(dottedStrings, mainModule);
-
-    PyObject* pPyObject = targetMemberObject.ptr();
-    if(pPyObject == NULL) {
-        return;
-    }
-    //
-    inspector.attr("pinfo")(targetMemberObject);
-}
-#endif
