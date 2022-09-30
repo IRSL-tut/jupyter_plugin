@@ -37,6 +37,4 @@
 #define ERROR_PRINT() \
     std::cerr << "[" << __PRETTY_FUNCTION__ << "]" << std::endl
 
-
-
 #endif
