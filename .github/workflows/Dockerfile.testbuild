@@ -1,0 +1,38 @@
+ARG BUILD_IMAGE=ubuntu:20.04
+ARG BASE_IMAGE=ubuntu:20.04
+
+FROM ${BUILD_IMAGE} as builder
+## do nothing
+
+FROM ${BASE_IMAGE}
+
+LABEL maintainer "IRSL-tut (https://github.com/IRSL-tut) <faculty@irsl.eiiris.tut.ac.jp>"
+
+SHELL ["/bin/bash", "-c"]
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt update -q -qq && \
+    apt install -q -qq -y libssl-dev openssl cmake g++ pkg-config git uuid-dev libsodium-dev && \
+    apt clean && \
+    rm -rf /var/lib/apt/lists/
+
+COPY --from=builder /opt/xeus /opt/xeus
+
+RUN apt update -q -qq && \
+    apt install -q -qq -y python3-pip && \
+    apt clean && \
+    rm -rf /var/lib/apt/lists/ && \
+    python3 -m pip install --upgrade pip && \
+    python3 -m pip install jupyterlab jupyter-console
+
+ENV PATH=$PATH:/opt/xeus/bin
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/xeus/lib
+
+## add jupyter
+
+#RUN (cd /choreonoid_src/choreonoid/ext; git clone https://github.com/IRSL-tut/jupyter_plugin.git)
+COPY jupyter_plugin /choreonoid_src/choreonoid/ext/jupyter_plugin
+
+RUN (cd /choreonoid_src/build; cmake -DCMAKE_INSTALL_PREFIX=/opt/choreonoid /choreonoid_src/choreonoid && \
+    make -j$(nproc) && \
+    make install )
