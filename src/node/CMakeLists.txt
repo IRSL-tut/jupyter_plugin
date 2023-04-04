@@ -1,0 +1,5 @@
+set(target choreonoid_jupyter)
+add_executable(${target} choreonoid_jupyter.cpp)
+#set_target_properties(${target} PROPERTIES OUTPUT_NAME choreonoid)
+target_link_libraries(${target} Choreonoid::CnoidBase)
+install(TARGETS ${target} RUNTIME DESTINATION bin)

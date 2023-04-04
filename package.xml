@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<package format="2">
+
+  <name>jupyter_plugin</name>
+  <version>0.0.0</version>
+  <description>
+    Jupyter on Choreonoid
+  </description>
+  <maintainer email="kakiuchi.yohei.sw@tut.jp"> YoheiKakiuchi </maintainer>
+  <license>MIT</license>
+  <author email="kakiuchi.yohei.sw@tut.jp"> YoheiKakiuchi </author>
+  <url type="repository">https://github.com/IRSL-tut/jupyter_plugin/</url>
+  <url type="bugtracker">https://github.com/IRSL-tut/jupyter_plugin/issues</url>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <depend>xeus</depend>
+  <depend>choreonoid</depend>
+
+  <export>
+    <build_type>cmake</build_type>
+  </export>
+
+</package>

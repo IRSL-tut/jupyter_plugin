@@ -26,8 +26,8 @@ set(sources ${sources} ${qtsources})
 
 if(${CMAKE_CURRENT_SOURCE_DIR} STREQUAL ${CMAKE_SOURCE_DIR})
   # Build as a master project
+  add_definitions(-DEXT_BUNDLE) ## TODO : write node/choreonoid_jupyter.cpp
   set(CMAKE_CXX_STANDARD ${CHOREONOID_CXX_STANDARD})
-  add_definitions(-DEXT_BUNDLE)
   choreonoid_add_plugin(CnoidJupyterPlugin ${sources} HEADERS ${headers})
   find_library(LIB_PYTHON_PLUGIN CnoidPythonPlugin HINTS ${CHOREONOID_PLUGIN_DIR})
   Message ("plugin: ${CHOREONOID_PLUGIN_DIR}, lib: ${LIB_PYTHON_PLUGIN}")
@@ -38,6 +38,7 @@ else()
   # Build as a bundled project
   Message ("Build : JupyterPlugin / under choreonoid/ext")
   ## build
+  add_definitions(-DEXT_BUNDLE)
   choreonoid_add_plugin(CnoidJupyterPlugin ${sources} HEADERS ${headers})
   target_link_libraries(CnoidJupyterPlugin CnoidUtil CnoidPythonPlugin xeus Threads::Threads)
   ## install
