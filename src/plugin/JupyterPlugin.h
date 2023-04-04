@@ -13,6 +13,9 @@ public:
     static JupyterPlugin* instance();
     JupyterPlugin();
     ~JupyterPlugin();
+#ifndef EXT_BUNDLE
+    bool customizeApplication(AppCustomizationUtil& app) override
+#endif
     virtual bool initialize() override;
     virtual bool finalize() override;
     virtual const char* description() const override;

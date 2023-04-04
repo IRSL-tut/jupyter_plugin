@@ -15,26 +15,46 @@ JupyterPlugin* JupyterPlugin::instance()
     return instance_;
 }
 JupyterPlugin::JupyterPlugin()
-    : Plugin("Jupyter")
+    : Plugin("Jupyter"), impl(nullptr)
 {
     require("Python");
     instance_ = this;
+#ifdef EXT_BUNDLE
     impl = new PythonProcess(this);
+#endif
 }
 JupyterPlugin::~JupyterPlugin()
 {
-    delete impl;
+    if (!!impl) {
+        delete impl;
+    }
 }
+#ifndef EXT_BUNDLE
+bool JupyterPlugin::customizeApplication(AppCustomizationUtil& app)
+{
+    DEBUG_PRINT();
+    impl = new PythonProcess(this);
+    return true;
+}
+#endif
 bool JupyterPlugin::initialize()
 {
     DEBUG_PRINT();
-    return impl->initialize();
+    if(!!impl) {
+        return impl->initialize();
+    } else {
+        return false;
+    }
 }
 bool JupyterPlugin::finalize()
 {
     DEBUG_PRINT();
     instance_ = nullptr;
-    return impl->finalize();
+    if(!!impl) {
+        return impl->finalize();
+    } else {
+        return true;
+    }
 }
 const char* JupyterPlugin::description() const
 {
