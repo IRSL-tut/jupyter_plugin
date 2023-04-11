@@ -52,7 +52,7 @@ jobs:
               ref: 'main',
               inputs: {
                 event_type: 'build_all',
-                source: 'jupyter_plugin'
+                source: 'jupyter_plugin',
                 hash: '${{ github.sha }}'
               }
             })
