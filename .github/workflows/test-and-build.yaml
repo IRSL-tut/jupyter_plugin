@@ -1,14 +1,13 @@
 name: BuildTestDeploy
-run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
+#run-name: ${{ github.actor }} is testing out GitHub Actions 🚀
 #
 on:
   workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
+    branches: [main]
+
 jobs:
   build:
     strategy:
@@ -35,9 +34,29 @@ jobs:
           --build-arg BASE_IMAGE=${{ env.DOCKER_LOCAL }}choreonoid_src:${{ env.DOCKER_TAG }}
           -t ${{ env.LOCAL_NAME }}:${{ github.sha }} ..
 #      - name: Test
-      - name: Deploy
+      - name: Deploy the Docker image
         if: github.event_name == 'push'
         run: |
           docker tag ${{ env.LOCAL_NAME }}:${{ github.sha }} ${{ env.DOCKER_DEPLOY }}${{ env.IMAGE_NAME }}:${{ env.DOCKER_TAG }}
           docker push ${{ env.DOCKER_DEPLOY }}${{ env.IMAGE_NAME }}:${{ env.DOCKER_TAG }}
+      - run: echo "🐳 Successfully pushed the Docker image (${{ env.DOCKER_DEPLOY }}${{ env.IMAGE_NAME }}:${{ env.DOCKER_TAG }})."
+      - name: Dispatch
+        if: github.event_name == 'push' && matrix.ubuntu == '20.04'
+        env:
+          GITHUB_TOKEN: ${{ secrets.IRSL_PAT_CLS }}
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.IRSL_PAT_CLS }}
+          script: |
+            github.rest.actions.createWorkflowDispatch({
+              owner: 'IRSL-tut',
+              repo: 'irsl_docker',
+              workflow_id: 'build-irsl-system.yaml',
+              ref: 'main',
+              inputs: {
+                event_type: 'build_all',
+                source: 'jupyter_plugin',
+                hash: '${{ github.sha }}'
+              }
+            })
       - run: echo "🍏 This job's status is ${{ job.status }}."
