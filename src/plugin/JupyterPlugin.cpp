@@ -26,7 +26,7 @@ JupyterPlugin::JupyterPlugin()
 JupyterPlugin::~JupyterPlugin()
 {
     if (!!impl) {
-        delete impl;
+        // delete impl; //
     }
 }
 #ifndef EXT_BUNDLE
