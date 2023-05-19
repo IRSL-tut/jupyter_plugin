@@ -39,7 +39,7 @@ else()
   ## build
   add_definitions(-DEXT_BUNDLE)
   choreonoid_add_plugin(CnoidJupyterPlugin ${sources} HEADERS ${headers})
-  target_link_libraries(CnoidJupyterPlugin CnoidUtil CnoidPythonPlugin xeus Threads::Threads)
+  target_link_libraries(CnoidJupyterPlugin PUBLIC CnoidUtil CnoidPythonPlugin xeus Threads::Threads)
   ## install
   install(FILES ../../share/jupyter/kernels/choreonoid/kernel.json DESTINATION ${CHOREONOID_SHARE_SUBDIR}/jupyter/kernels/choreonoid)
 endif()
