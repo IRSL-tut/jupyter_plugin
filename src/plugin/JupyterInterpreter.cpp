@@ -3,11 +3,36 @@
 #include <QString>
 #include <xtl/xbase64.hpp>
 #include "irsl_debug.h"
+#include <vector>
+#include <sstream>
 
 namespace nl = nlohmann;
 
 namespace cnoid
 {
+    bool split_code(std::vector<std::string> &res, const std::string &_code)
+    {
+        int start_ = 0;
+        int end_ = _code.find_first_of('\n');
+
+        if(end_ == std::string::npos) {
+            return false;
+        }
+
+        while(start_ < _code.size()){
+            std::string sub(_code, start_, end_ - start_);
+
+            res.push_back(sub);
+            start_ = end_ + 1;
+            end_ = _code.find_first_of('\n', start_);
+
+            if(end_ == std::string::npos) {
+                end_ = _code.size();
+            }
+        }
+        return true;
+    }
+
     nl::json JupyterInterpreter::execute_request_impl(int execution_counter, // Typically the cell number
                                                       const std::string& code, // Code to execute
                                                       bool silent, bool store_history,
@@ -126,20 +151,41 @@ namespace cnoid
                                             nl::json &user_expressions,
                                             bool allow_stdin)
     {
-        impl->putCommand(code);// enter?
+        std::vector<std::string> lines_;
+        int res_counter_ = 0;
+        std::ostringstream oss_;
+
+        if (!split_code(lines_, code)) {
+            lines_.push_back(code);
+        }
+
+        bool error_ = false;
+        for(int i = 0; i < lines_.size(); i++) {
+            DEBUG_STREAM("in: " << lines_[i]);
+            impl->putCommand(lines_[i]);// enter?
+            if(impl->out_strm.str().size() > 0) {
+                if(res_counter_ != 0) {
+                    oss_ << std::endl;
+                }
+                oss_ << impl->out_strm.str();
+                res_counter_++;
+            }
+            if (impl->err_strm.str().size() > 0) {
+                error_ = true;
+                break;
+            }
+        }
 
         nl::json pub_data;
-        std::string str = impl->out_strm.str();
-        DEBUG_STREAM("[" << str << "]");
-        if (str.size() > 0) {
-            pub_data["text/plain"] = str;
+        DEBUG_STREAM("[" << oss_.str() << "]");
+        if (oss_.str().size() > 0) {
+            pub_data["text/plain"] = oss_.str();
             publish_execution_result(execution_counter, std::move(pub_data), nl::json::object());
         }
         // ???
-        std::string err_str = impl->err_strm.str();
-        if(err_str.size() > 0) {
+        if(error_) {
             std::vector<std::string> tb;
-            tb.push_back(err_str);
+            tb.push_back(impl->err_strm.str());
             publish_execution_error("Error", "001", tb);
         }
         return true;
