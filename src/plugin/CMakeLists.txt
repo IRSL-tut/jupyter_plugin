@@ -10,8 +10,7 @@ set(headers
   JupyterInterpreter.h
   )
 add_definitions(-Wno-deprecated-declarations)
-add_definitions(-DIRSL_DEBUG)
-
+#add_definitions(-DIRSL_DEBUG)
 
 set(xeus_REQUIRED_VERSION 0.19.1)
 #set(cppzmq_REQUIRED_VERSION 4.3.0)
