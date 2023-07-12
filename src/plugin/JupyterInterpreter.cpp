@@ -10,29 +10,37 @@ namespace nl = nlohmann;
 
 namespace cnoid
 {
-    bool split_code(std::vector<std::string> &res, const std::string &_code)
+    bool split_code(std::vector<std::string> &res, const std::string &_code, const char elm = '\n')
     {
         int start_ = 0;
-        int end_ = _code.find_first_of('\n');
+        int end_ = _code.find_first_of(elm);
 
-        if(end_ == std::string::npos) {
-            return false;
-        }
+        if(end_ == std::string::npos) return false;
 
         while(start_ < _code.size()){
             std::string sub(_code, start_, end_ - start_);
-
             res.push_back(sub);
             start_ = end_ + 1;
-            end_ = _code.find_first_of('\n', start_);
-
+            end_ = _code.find_first_of(elm, start_);
             if(end_ == std::string::npos) {
                 end_ = _code.size();
             }
         }
         return true;
     }
+    bool right_trim(std::string &res, const std::string &_code) {
+      int end_pos = _code.size();
+      for (int idx = _code.size() - 1; idx >= 0; idx--) {
+          if (_code[idx] != ' ' && _code[idx] != '\t') {
+              end_pos = idx + 1;
+              break;
+          }
+      }
+      if (end_pos == 0) return false;
 
+      res = std::string(_code, 0, end_pos);
+      return true;
+    }
     nl::json JupyterInterpreter::execute_request_impl(int execution_counter, // Typically the cell number
                                                       const std::string& code, // Code to execute
                                                       bool silent, bool store_history,
@@ -125,8 +133,10 @@ namespace cnoid
         }
     }
 
-    nl::json JupyterInterpreter::is_complete_request_impl(const std::string& /*code*/)
+    nl::json JupyterInterpreter::is_complete_request_impl(const std::string& code)
     {
+        // should be implement for console
+        DEBUG_STREAM(" is_cmoplete : " << code);
         return xeus::create_is_complete_reply("complete");
     }
 
@@ -154,11 +164,38 @@ namespace cnoid
         std::vector<std::string> lines_;
         int res_counter_ = 0;
         std::ostringstream oss_;
-
+        DEBUG_STREAM(" code: " << code) ;
         if (!split_code(lines_, code)) {
             lines_.push_back(code);
         }
-
+        DEBUG_STREAM(" lines: " << lines_.size()) ;
+        if (lines_.size() > 1) {
+            lines_.push_back("\n");
+        } else {
+            std::vector<std::string> active_code_;
+            std::string cur_code;
+            if(split_code(active_code_, code, '#')) {
+                cur_code = active_code_[0];
+            } else {
+                cur_code = code;
+            }
+            std::string _res;
+            if (right_trim(_res, cur_code)) {
+                if (_res.back() == ':') {
+                    std::vector<std::string> tb;
+                    tb.push_back(_res);
+                    {
+                        std::ostringstream oss_;
+                        for (int i = 0; i < _res.size() - 1; i++) oss_ << " ";
+                        oss_ << "^";
+                        tb.push_back(oss_.str());
+                    }
+                    tb.push_back("SyntaxError: incomplete input");
+                    publish_execution_error("Error", "002", tb);
+                    return true;
+                }
+            }
+        }
         bool error_ = false;
         for(int i = 0; i < lines_.size(); i++) {
             DEBUG_STREAM("in: " << lines_[i]);
