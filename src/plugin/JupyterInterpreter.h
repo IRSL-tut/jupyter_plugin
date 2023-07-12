@@ -15,7 +15,7 @@ namespace cnoid
     class JupyterInterpreter : public xinterpreter
     {
     public:
-        JupyterInterpreter() = default;
+        JupyterInterpreter() : after_is_complete(false), not_in_scope(false), is_complete_previous_pos(0) {}
         virtual ~JupyterInterpreter() = default;
 
         PythonProcess *impl;
@@ -36,18 +36,25 @@ namespace cnoid
         nl::json kernel_info_request_impl() override;
         void shutdown_request_impl() override;
 
-        bool execute_python(int execution_counter,
-                            const std::string& code,
-                            bool silent,
-                            bool store_history,
-                            nl::json &user_expressions,
-                            bool allow_stdin);
+      ////
+        void publish_result_and_error(int exec_counter);
+        bool execute_python(const std::string& code, bool &is_complete, bool in_complete);
+        bool execute_python_is_complete(const std::string& code);
         bool execute_choreonoid(int execution_counter,
                                 const std::string& code,
                                 bool silent,
                                 bool store_history,
                                 nl::json &user_expressions,
                                 bool allow_stdin);
+
+        bool after_is_complete;
+        bool not_in_scope;
+        int is_complete_previous_pos;
+        int executed_pos;
+        int current_indent;
+
+        std::ostringstream oss_out;
+        std::ostringstream oss_err;
     };
 }
 #endif

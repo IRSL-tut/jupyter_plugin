@@ -152,8 +152,9 @@ bool PythonProcess::finalize()
     DEBUG_PRINT();
     return true;
 }
-void PythonProcess::putCommand(const std::string &_com)
+bool PythonProcess::putCommand(const std::string &_com)
 {
+    bool ret;
     python::gil_scoped_acquire lock;
     orgStdout = sys.attr("stdout");
     orgStderr = sys.attr("stderr");
@@ -170,10 +171,12 @@ void PythonProcess::putCommand(const std::string &_com)
     if(interpreter.attr("push")(_com).cast<bool>()) {
         // Enter scope
         DEBUG_STREAM("...");
+        ret = false; // not complete
+
     } else  {
         // Finish command
-        // do nothing
         DEBUG_STREAM(">>>");
+        ret = true; // complete
     }
     if(PyErr_Occurred()){
         PyErr_Print();
@@ -182,6 +185,8 @@ void PythonProcess::putCommand(const std::string &_com)
     sys.attr("stdout") = orgStdout;
     sys.attr("stderr") = orgStderr;
     sys.attr("stdin")  = orgStdin;
+
+    return ret;
 }
 void PythonProcess::interpreterThread()
 {
@@ -203,6 +208,8 @@ void PythonProcess::interpreterThread()
 void PythonProcess::procComRequest(const QString &com)
 {
     // [TODO] commander
+    // choreonoidProcessCommandr(this, com);
+    // void choreonoidProcessCommandr(PythonProcess *, const Qstring &);
     if(com == "display") {
         //SceneView *sv = SceneView::instance();
         //std::vector<SceneView*> lst = SceneView::instances();

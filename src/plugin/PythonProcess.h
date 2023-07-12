@@ -35,7 +35,7 @@ public:
     void onSigOptionsParsed(boost::program_options::variables_map& variables);
     bool initialize();
     bool finalize();
-    void putCommand(const std::string &_com);
+    bool putCommand(const std::string &_com);
     //void inspectObject(const std::string &obj_name);
     python::object findObject(const std::string &obj_name);
     void interpreterThread();
