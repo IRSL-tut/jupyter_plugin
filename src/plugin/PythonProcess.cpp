@@ -166,11 +166,12 @@ void PythonProcess::putCommand(const std::string &_com)
     sys.attr("stderr") = consoleErr;
     sys.attr("stdin")  = consoleIn;
 
+    DEBUG_STREAM(" push: " << _com);
     if(interpreter.attr("push")(_com).cast<bool>()) {
-        std::string ret("\n");
-        bool res = interpreter.attr("push")(ret).cast<bool>();
-        if (res) res = interpreter.attr("push")(ret).cast<bool>();
+        // Enter scope
+        DEBUG_STREAM("...");
     } else  {
+        // Finish command
         // do nothing
         DEBUG_STREAM(">>>");
     }
