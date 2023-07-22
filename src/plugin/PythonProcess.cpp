@@ -3,7 +3,12 @@
 // xeus
 #include <xeus/xkernel.hpp>
 #include <xeus/xkernel_configuration.hpp>
+#ifdef USE_XEUS3
+#include <xeus-zmq/xserver_zmq.hpp>
+#else
 #include <xeus/xserver_zmq.hpp>
+#endif
+#include <xeus/xinput.hpp>
 // cnoid
 #include <cnoid/UTF8>
 #include <cnoid/stdx/filesystem>
