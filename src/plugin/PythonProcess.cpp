@@ -3,7 +3,12 @@
 // xeus
 #include <xeus/xkernel.hpp>
 #include <xeus/xkernel_configuration.hpp>
+#ifdef USE_XEUS3
+#include <xeus-zmq/xserver_zmq.hpp>
+#else
 #include <xeus/xserver_zmq.hpp>
+#endif
+#include <xeus/xinput.hpp>
 // cnoid
 #include <cnoid/UTF8>
 #include <cnoid/stdx/filesystem>
@@ -74,6 +79,10 @@ python::object PythonConsoleIn::readline()
     //return python::str(console->getInputFromConsoleIn());
     return python::str();
 }
+std::string cpp_input(const std::string &prompt)
+{
+    return xeus::blocking_input_request(prompt, false);
+}
 }
 
 ////
@@ -140,6 +149,10 @@ bool PythonProcess::initialize()
         keywords.push_back(pybind11::cast<string>(kwlist[i]));
     }
 #endif
+
+    pybind11::module builtins = pybind11::module::import("builtins");
+    //m_sys_input = builtins.attr("input");
+    builtins.attr("input") = pybind11::cpp_function(&cpp_input, pybind11::arg("prompt") = "");
 
     connect(this, &PythonProcess::sendComRequest,
             this, &PythonProcess::procComRequest,

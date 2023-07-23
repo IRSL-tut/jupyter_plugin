@@ -15,7 +15,8 @@ namespace cnoid
     class JupyterInterpreter : public xinterpreter
     {
     public:
-        JupyterInterpreter() : after_is_complete(false), not_in_scope(false), is_complete_previous_pos(0) {}
+        JupyterInterpreter() : after_is_complete(false), not_in_scope(false), is_complete_previous_pos(0)
+        {   xeus::register_interpreter(this); }
         virtual ~JupyterInterpreter() = default;
 
         PythonProcess *impl;

@@ -1,6 +1,7 @@
 #include "JupyterInterpreter.h"
 #include <xeus/xhelper.hpp>
 #include <QString>
+#include <QCoreApplication>
 #include <xtl/xbase64.hpp>
 #include "irsl_debug.h"
 #include <vector>
@@ -321,6 +322,7 @@ namespace cnoid
     void JupyterInterpreter::shutdown_request_impl()
     {
         DEBUG_PRINT();
+        QCoreApplication::quit(); // [TODO] exit choreonoid, is it OK?
     }
     void JupyterInterpreter::publish_result_and_error(int exec_counter)
     {
