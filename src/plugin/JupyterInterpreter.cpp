@@ -224,7 +224,7 @@ namespace cnoid
     {
         // should be implement for console
         DEBUG_STREAM(" is_cmoplete [" << after_is_complete << "](" << code.size() << "/" << is_complete_previous_pos << "): " << code);
-        if(code.size() > 0 && code[0] == '?') {
+        if(code.size() > 0 && (code[0] == '?' || code[0] == '%')) {
             return xeus::create_is_complete_reply("complete");
         }
         bool new_enter = !after_is_complete;
