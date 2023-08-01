@@ -157,6 +157,9 @@ bool PythonProcess::initialize()
     connect(this, &PythonProcess::sendComRequest,
             this, &PythonProcess::procComRequest,
             Qt::BlockingQueuedConnection);  //Qt::DirectConnection);
+    connect(this, &PythonProcess::sendPyRequest,
+            this, &PythonProcess::procPyRequest,
+            Qt::BlockingQueuedConnection);  //Qt::DirectConnection);
 
     return true;
 }
@@ -217,6 +220,10 @@ void PythonProcess::interpreterThread()
                          std::move(interpreter), xeus::make_xserver_zmq);
 
     kernel.start();
+}
+void PythonProcess::procPyRequest(const std::string &line)
+{
+    this->is_complete = this->putCommand(line);
 }
 void PythonProcess::procComRequest(const QString &com)
 {

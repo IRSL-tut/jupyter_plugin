@@ -400,6 +400,75 @@ namespace cnoid
         int res_counter_ = 0;
         for(int i = 0; i < lines_.size(); i++) {
             DEBUG_STREAM("in: " << lines_[i]);
+            //is_complete = impl->putCommand(lines_[i]);// enter?
+            impl->sendPyRequest(lines_[i]);
+            is_complete = impl->is_complete;
+            if(impl->out_strm.str().size() > 0) {
+                if(res_counter_ != 0) {
+                    oss_out << std::endl;
+                }
+                oss_out << impl->out_strm.str();
+                res_counter_++;
+            }
+            if (impl->err_strm.str().size() > 0) {
+                error_ = true;
+                break;
+            }
+        }
+        if(error_) oss_err << impl->err_strm.str();
+        return true;
+    }
+#if 0
+    //// direct run from another thread
+    bool JupyterInterpreter::execute_python(const std::string& code, bool &is_complete, bool in_complete)
+    {
+        std::vector<std::string> lines_;
+        DEBUG_STREAM(" code: " << code);
+        if (!split_code(lines_, code)) {
+            lines_.push_back(code);
+        }
+        DEBUG_STREAM(" lines: " << lines_.size());
+        if (in_complete) {
+            //
+        } else if (!in_complete) {
+            if (lines_.size() > 1) {
+                lines_.push_back("\n");
+            } else {
+                std::vector<std::string> active_code_;
+                std::string cur_code;
+                if(split_code(active_code_, code, '#')) {
+                    cur_code = active_code_[0];
+                } else {
+                    cur_code = code;
+                }
+                std::string _res;
+                if (right_trim(_res, cur_code)) {
+                    if (_res.back() == ':') {
+                        std::vector<std::string> tb;
+                        tb.push_back(_res);
+                        {
+                            std::ostringstream oss_;
+                            for (int i = 0; i < _res.size() - 1; i++) oss_ << " ";
+                            oss_ << "^";
+                            tb.push_back(oss_.str());
+                        }
+                        tb.push_back("SyntaxError: incomplete input");
+                        publish_execution_error("Error", "002", tb);
+                        return false; // do not enter python interpreter
+                    }
+                }
+            }
+        }
+
+        bool error_ = false;
+        oss_out.str("");
+        oss_out.clear(std::stringstream::goodbit);
+        oss_err.str("");
+        oss_err.clear(std::stringstream::goodbit);
+
+        int res_counter_ = 0;
+        for(int i = 0; i < lines_.size(); i++) {
+            DEBUG_STREAM("in: " << lines_[i]);
             is_complete = impl->putCommand(lines_[i]);// enter?
             if(impl->out_strm.str().size() > 0) {
                 if(res_counter_ != 0) {
@@ -430,6 +499,7 @@ namespace cnoid
 #endif
         return true;
     }
+#endif
     bool JupyterInterpreter::execute_choreonoid(int execution_counter,
                                                 const std::string& code,
                                                 bool silent, bool store_history,
