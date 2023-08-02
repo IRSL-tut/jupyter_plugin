@@ -43,10 +43,13 @@ public:
     QByteArray data;
     std::ostringstream out_strm;
     std::ostringstream err_strm;
+    bool is_complete;
 public Q_SLOTS:
     void procComRequest(const QString &com);
+    void procPyRequest(const std::string &line);
 Q_SIGNALS:
     void sendComRequest(const QString &msg);
+    void sendPyRequest(const std::string &line);
 };
 }
 
