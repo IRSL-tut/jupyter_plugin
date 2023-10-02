@@ -10,7 +10,9 @@ set(headers
   PythonProcess.h
   JupyterInterpreter.h
   )
-add_definitions(-Wno-deprecated-declarations)
+if (NOT WIN32)
+  add_definitions(-Wno-deprecated-declarations)
+endif()
 #add_definitions(-DIRSL_DEBUG)
 
 set(xeus_REQUIRED_VERSION 0.19.1)
