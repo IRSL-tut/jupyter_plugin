@@ -16,7 +16,7 @@
 #define DEBUG_SIMPLE(args)
 #define DEBUG_STREAM_NL(args)
 #define DEBUG_STREAM(args)
-#define DEBUG_PRINT(args)
+#define DEBUG_PRINT()
 #endif
 
 #define INFO_SIMPLE_NL(args) std::cout << args

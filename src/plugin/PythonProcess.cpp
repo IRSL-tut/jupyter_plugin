@@ -93,6 +93,8 @@ void PythonProcess::onSigOptionsParsed(po::variables_map& variables)
         connection_file = variables["jupyter-connection"].as<std::string>();
         DEBUG_STREAM(" jupyter-connection:" << connection_file);
 
+        setupPython();
+
         std::thread th_interp(&PythonProcess::interpreterThread, this);
         th_interp.detach();
     }
@@ -104,7 +106,10 @@ bool PythonProcess::initialize()
     om.addOption("jupyter-connection", po::value<std::string>(), "connection file for jupyter");
     om.sigOptionsParsed(1).connect(
         [this](po::variables_map& _v) { onSigOptionsParsed(_v); } );
-
+    return true;
+}
+bool PythonProcess::setupPython()
+{
     python::gil_scoped_acquire lock;
 
     mainModule = PythonPlugin::instance()->mainModule();

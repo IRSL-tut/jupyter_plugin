@@ -74,11 +74,11 @@ namespace cnoid
             res.clear();
             return;
         }
-        int start_pos = std::string::npos;
+        size_t start_pos = std::string::npos;
         if (_code.back() == '\n') {
             start_pos = _code.size() - 1;
         }
-        int pos = _code.find_last_of('\n', start_pos);
+        size_t pos = _code.find_last_of('\n', start_pos);
         if(pos == std::string::npos) {
             res = _code;
         } else {

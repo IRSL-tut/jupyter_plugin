@@ -38,7 +38,6 @@ public:
     bool putCommand(const std::string &_com);
     //void inspectObject(const std::string &obj_name);
     python::object findObject(const std::string &obj_name);
-    void interpreterThread();
 
     QByteArray data;
     std::ostringstream out_strm;
@@ -50,6 +49,9 @@ public Q_SLOTS:
 Q_SIGNALS:
     void sendComRequest(const QString &msg);
     void sendPyRequest(const std::string &line);
+private:
+    bool setupPython();
+    void interpreterThread();
 };
 }
 
