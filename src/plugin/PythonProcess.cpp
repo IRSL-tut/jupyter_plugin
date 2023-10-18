@@ -30,21 +30,21 @@ namespace po = boost::program_options;
 namespace filesystem = cnoid::stdx::filesystem;
 
 namespace {
-class PythonConsoleOut
+class PythonConsoleOut2
 {
 public:
     PythonProcess* console;
     void setConsole(PythonProcess* _console);
     void write(std::string const& text);
 };
-class PythonConsoleErr
+class PythonConsoleErr2
 {
 public:
     PythonProcess* console;
     void setConsole(PythonProcess* _console);
     void write(std::string const& text);
 };
-class PythonConsoleIn
+class PythonConsoleIn2
 {
 public:
     PythonProcess* console;
@@ -54,27 +54,27 @@ public:
 }
 
 namespace {
-void PythonConsoleOut::setConsole(PythonProcess* _console)
+void PythonConsoleOut2::setConsole(PythonProcess* _console)
 {
     console = _console;
 }
-void PythonConsoleOut::write(std::string const& text)
+void PythonConsoleOut2::write(std::string const& text)
 {
     console->out_strm << text;
 }
-void PythonConsoleErr::setConsole(PythonProcess* _console)
+void PythonConsoleErr2::setConsole(PythonProcess* _console)
 {
     console = _console;
 }
-void PythonConsoleErr::write(std::string const& text)
+void PythonConsoleErr2::write(std::string const& text)
 {
     console->err_strm << text;
 }
-void PythonConsoleIn::setConsole(PythonProcess* _console)
+void PythonConsoleIn2::setConsole(PythonProcess* _console)
 {
     console = _console;
 }
-python::object PythonConsoleIn::readline()
+python::object PythonConsoleIn2::readline()
 {
     //return python::str(console->getInputFromConsoleIn());
     return python::str();
@@ -92,9 +92,7 @@ void PythonProcess::onSigOptionsParsed(po::variables_map& variables)
     if(variables.count("jupyter-connection")) {
         connection_file = variables["jupyter-connection"].as<std::string>();
         DEBUG_STREAM(" jupyter-connection:" << connection_file);
-
-        setupPython();
-
+        bool res = setupPython();
         std::thread th_interp(&PythonProcess::interpreterThread, this);
         th_interp.detach();
     }
@@ -106,6 +104,7 @@ bool PythonProcess::initialize()
     om.addOption("jupyter-connection", po::value<std::string>(), "connection file for jupyter");
     om.sigOptionsParsed(1).connect(
         [this](po::variables_map& _v) { onSigOptionsParsed(_v); } );
+
     return true;
 }
 bool PythonProcess::setupPython()
@@ -114,30 +113,34 @@ bool PythonProcess::setupPython()
 
     mainModule = PythonPlugin::instance()->mainModule();
     globalNamespace = PythonPlugin::instance()->globalNamespace();
-    interpreter = python::module::import("code").attr("InteractiveConsole")(globalNamespace);
+
+    try { interpreter = python::module::import("code").attr("InteractiveConsole")(globalNamespace);
+    } catch (...) { /* ignore the exception on windows. this module is loaded already. */
+        DEBUG_STREAM(" interpreter loading ERR");
+    }
 
     pybind11::object consoleOutClass =
-        pybind11::class_<PythonConsoleOut>(mainModule, "PythonConsoleOut2")
+        pybind11::class_<PythonConsoleOut2>(mainModule, "PythonConsoleOut2")
         .def(pybind11::init<>())
-        .def("write", &PythonConsoleOut::write);
+        .def("write", &PythonConsoleOut2::write);
     consoleOut = consoleOutClass();
-    PythonConsoleOut& consoleOut_ = consoleOut.cast<PythonConsoleOut&>();
+    PythonConsoleOut2& consoleOut_ = consoleOut.cast<PythonConsoleOut2&>();
     consoleOut_.setConsole(this);
 
     pybind11::object consoleErrClass =
-        pybind11::class_<PythonConsoleErr>(mainModule, "PythonConsoleErr2")
+        pybind11::class_<PythonConsoleErr2>(mainModule, "PythonConsoleErr2")
         .def(pybind11::init<>())
-        .def("write", &PythonConsoleErr::write);
+        .def("write", &PythonConsoleErr2::write);
     consoleErr = consoleErrClass();
-    PythonConsoleErr& consoleErr_ = consoleErr.cast<PythonConsoleErr&>();
+    PythonConsoleErr2& consoleErr_ = consoleErr.cast<PythonConsoleErr2&>();
     consoleErr_.setConsole(this);
 
     python::object consoleInClass =
-        pybind11::class_<PythonConsoleIn>(mainModule, "PythonConsoleIn2")
+        pybind11::class_<PythonConsoleIn2>(mainModule, "PythonConsoleIn2")
         .def(pybind11::init<>())
-        .def("readline", &PythonConsoleIn::readline);
+        .def("readline", &PythonConsoleIn2::readline);
     consoleIn = consoleInClass();
-    PythonConsoleIn& consoleIn_ = consoleIn.cast<PythonConsoleIn&>();
+    PythonConsoleIn2 consoleIn_ = consoleIn.cast<PythonConsoleIn2&>();
     consoleIn_.setConsole(this);
 
     sys = PythonPlugin::instance()->sysModule();

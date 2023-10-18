@@ -1,8 +1,13 @@
 #ifndef __IRSL_DEBUG_H__
 #define __IRSL_DEBUG_H__
 
-#ifdef IRSL_DEBUG
+#ifdef _WIN32
+#define __PRETTY_FUNCTION__  __FUNCSIG__
+#endif
+
 #include <iostream>
+
+#ifdef IRSL_DEBUG
 #define DEBUG_SIMPLE_NL(args) std::cerr << args
 #define DEBUG_SIMPLE(args) std::cerr << args << std::endl
 #define DEBUG_STREAM_NL(args) \
