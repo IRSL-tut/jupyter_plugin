@@ -1,0 +1,7 @@
+ipython
+jedi
+jupyterlab
+jupyter-console
+jedi-language-server
+jupyterlab-lsp
+python-lsp-server[all]

@@ -64,11 +64,15 @@ python3 -m pip install jupyterlab
 python3 -m pip install jupyter-console
 ```
 
+Installing to /usr/local
+```bash
+sudo python3 -m pip install -r requirements.txt
+```
 
 ## RUN through jupyer
 
 ```bash
-export JUPYTER_PATH={path/to/install/choreonoid}/share/choreonoid-1.8/jupyter
+export JUPYTER_PATH={path/to/install/choreonoid}/share/choreonoid-2.0/jupyter
 ```
 
 ### Default (browser will be launched)
@@ -90,4 +94,3 @@ Access http://localhost:8888 by a browser
 ```
 jupyter console --kernel=Choreonoid
 ```
-
