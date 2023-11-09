@@ -29,6 +29,7 @@ public:
     python::object orgStdin;
     python::object interpreter;
     python::object inspector;
+    python::object transformer;
     python::object token_at_cursor;
     python::object jedi_Interpreter;//
 

@@ -227,6 +227,30 @@ namespace cnoid
         if(code.size() > 0 && (code[0] == '?' || code[0] == '%')) {
             return xeus::create_is_complete_reply("complete");
         }
+        {
+            python::gil_scoped_acquire lock;
+            python::tuple ret;
+            ret = impl->transformer.attr("check_complete")(code);
+            DEBUG_STREAM(" tuple_size: " << ret.size());
+            if (ret.size() > 1) {
+                std::string res_ = ret[0].cast<std::string>();
+                int pos_ = -1;
+                if (ret[1].is_none()) {
+                    DEBUG_STREAM(" NONE");
+                } else {
+                    pos_ = ret[1].cast<int>();
+                }
+                DEBUG_STREAM(" res: \'" << res_ << "\', pos: "  << pos_);
+                if (pos_ >= 0) {
+                    // TODO: indent
+                    return xeus::create_is_complete_reply(res_);
+                } else {
+                    return xeus::create_is_complete_reply(res_);
+                }
+            } else {
+                ERROR_STREAM(" :ipython transformer failed: " << ret.size());
+            }
+        }
         bool new_enter = !after_is_complete;
         after_is_complete = true;
         int cur_pos = code.size();

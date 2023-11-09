@@ -147,6 +147,9 @@ bool PythonProcess::setupPython()
     python::object inspector_class = python::module::import("IPython").attr("core").attr("oinspect").attr("Inspector");
     inspector = inspector_class();
     //
+    python::object transformer_class = python::module::import("IPython").attr("core").attr("inputtransformer2").attr("TransformerManager");
+    transformer = transformer_class();
+    //
     token_at_cursor = python::module::import("IPython.utils.tokenutil").attr("token_at_cursor");
     //token_at_cursor = python::module::import("IPython").attr("utils").attr("tokenutil").attr("token_at_cursor");
     jedi_Interpreter = python::module::import("jedi").attr("Interpreter");
