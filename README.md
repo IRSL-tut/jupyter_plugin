@@ -2,6 +2,24 @@
 
 require XEUS, IPython, jedi, jupyter lab
 
+## Compiling jupyter_plugin
+
+Install XEUS, Install jupyter before compiling
+
+```
+cd choreonoid/ext; 
+git clone https://github.com/IRSL-tut/jupyter_plugin.git
+```
+After cloning repository, cmake and make choreonoid in the usual way
+
+Or using ADDITIONAL_EXT_DIRECTORIES
+
+https://github.com/choreonoid/choreonoid/blob/master/CMakeLists.txt#L898
+
+```
+cmake <choreonoid_dir> -DADDITIONAL_EXT_DIRECTORIES=<jupyter_plugin_dir>
+```
+
 ## Install XEUS
 
 XEUS https://github.com/jupyter-xeus/xeus
