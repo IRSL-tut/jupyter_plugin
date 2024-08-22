@@ -5,3 +5,4 @@ jupyter-console
 jedi-language-server
 jupyterlab-lsp
 python-lsp-server[all]
+jupytext
