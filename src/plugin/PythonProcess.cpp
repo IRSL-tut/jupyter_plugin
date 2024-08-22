@@ -36,6 +36,7 @@ public:
     PythonProcess* console;
     void setConsole(PythonProcess* _console);
     void write(std::string const& text);
+    void flush();
 };
 class PythonConsoleErr2
 {
@@ -43,6 +44,7 @@ public:
     PythonProcess* console;
     void setConsole(PythonProcess* _console);
     void write(std::string const& text);
+    void flush();
 };
 class PythonConsoleIn2
 {
@@ -62,6 +64,7 @@ void PythonConsoleOut2::write(std::string const& text)
 {
     console->out_strm << text;
 }
+void PythonConsoleOut2::flush() {}
 void PythonConsoleErr2::setConsole(PythonProcess* _console)
 {
     console = _console;
@@ -70,6 +73,7 @@ void PythonConsoleErr2::write(std::string const& text)
 {
     console->err_strm << text;
 }
+void PythonConsoleErr2::flush() {}
 void PythonConsoleIn2::setConsole(PythonProcess* _console)
 {
     console = _console;
@@ -122,7 +126,8 @@ bool PythonProcess::setupPython()
     pybind11::object consoleOutClass =
         pybind11::class_<PythonConsoleOut2>(mainModule, "PythonConsoleOut2")
         .def(pybind11::init<>())
-        .def("write", &PythonConsoleOut2::write);
+        .def("write", &PythonConsoleOut2::write)
+        .def("flush", &PythonConsoleOut2::flush);
     consoleOut = consoleOutClass();
     PythonConsoleOut2& consoleOut_ = consoleOut.cast<PythonConsoleOut2&>();
     consoleOut_.setConsole(this);
@@ -130,7 +135,8 @@ bool PythonProcess::setupPython()
     pybind11::object consoleErrClass =
         pybind11::class_<PythonConsoleErr2>(mainModule, "PythonConsoleErr2")
         .def(pybind11::init<>())
-        .def("write", &PythonConsoleErr2::write);
+        .def("write", &PythonConsoleErr2::write)
+        .def("flush", &PythonConsoleErr2::flush);
     consoleErr = consoleErrClass();
     PythonConsoleErr2& consoleErr_ = consoleErr.cast<PythonConsoleErr2&>();
     consoleErr_.setConsole(this);
