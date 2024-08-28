@@ -8,6 +8,7 @@
 #include <sstream>
 
 namespace nl = nlohmann;
+using namespace pybind11::literals; // using _a
 
 namespace cnoid
 {
@@ -120,26 +121,49 @@ namespace cnoid
             }
         }
 
-        if(code.size() > 0 && code[0] == '%') {
+        if (code.size() > 0 && code[0] == '%') {
             res = execute_choreonoid(execution_counter, code.substr(1), silent, store_history,
                                      user_expressions, allow_stdin);
-        } else if(code.size() > 0 && code[0] == '?') {
-            python::gil_scoped_acquire lock;
-
-            python::object pobj_ = impl->findObject(code.substr(1));
-            if(pobj_.ptr() != NULL) {
-                python::dict pdic_ = impl->inspector.attr("_get_info")(pobj_);
-                nl::json pub_;
-                pub_["text/plain"] = pdic_["text/plain"].cast<std::string>();
-#if 0
-                for(auto it = pdic_.begin(); it != pdic_.end(); it++) {
-                    DEBUG_STREAM(" " << it->first.cast<std::string>());
-                    DEBUG_STREAM(" " << it->second.cast<std::string>());
-                    pub_[it->first.cast<std::string>()] = it->second.cast<std::string>();
-                }
-#endif
-                publish_execution_result(execution_counter, std::move(pub_), nl::json::object());
+        } else if (code.size() > 0 && ( code[0] == '?' || code[code.size()-1] == '?' )) {
+            std::string ncode = code;
+            if (ncode[0] == '?') {
+                ncode = ncode.substr(1);
             }
+            if (ncode[ncode.size()-1] == '?' ) {
+                ncode = ncode.substr(0, ncode.size()-1);
+            }
+            int detail_level = 0;
+            if (ncode.size() > 1 && (ncode[0] == '?' || ncode[ncode.size()-1] == '?')) {
+                detail_level = 1;
+                if (ncode[0] == '?') {
+                    ncode = ncode.substr(1);
+                }
+                if (ncode[ncode.size()-1] == '?' ) {
+                    ncode = ncode.substr(0, ncode.size()-1);
+                }
+            }
+            if(ncode.size() > 0) {
+                DEBUG_STREAM(" ncode:>|" << ncode << "|<");
+                python::gil_scoped_acquire lock;
+                python::object pobj_ = impl->findObject(ncode);
+                if (pobj_.ptr() != NULL) {
+                    python::dict pdic_ = impl->inspector.attr("_get_info")(pobj_,
+                                                                           "detail_level"_a=detail_level);
+                    nl::json pub_;
+                    pub_["text/plain"] = pdic_["text/plain"].cast<std::string>();
+#if 0
+                    for(auto it = pdic_.begin(); it != pdic_.end(); it++) {
+                        DEBUG_STREAM(" " << it->first.cast<std::string>());
+                        DEBUG_STREAM(" " << it->second.cast<std::string>());
+                        pub_[it->first.cast<std::string>()] = it->second.cast<std::string>();
+                    }
+#endif
+                    publish_execution_result(execution_counter, std::move(pub_), nl::json::object());
+                }
+            }
+        } else if (code.size() > 0 && code[0] == '!') {
+            // do nothing
+            // not implemented yet
         } else {
             bool dummy;
             res = execute_python(cur_code_, dummy, false);
@@ -168,21 +192,37 @@ namespace cnoid
         DEBUG_STREAM(" " << cursor_pos << " >>" << code);
         python::gil_scoped_acquire lock;
         std::vector<std::string> matches;
+        std::vector<nl::json> meta_list;
         int cursor_start = cursor_pos;
         std::string sub_code = code.substr(0, cursor_pos);
         python::list completions = impl->jedi_Interpreter(sub_code, python::make_tuple(python::globals())).attr("complete")();
-
+        DEBUG_STREAM(" sub:" << sub_code);
+        DEBUG_STREAM(" len: " << python::len(completions));
         if (python::len(completions) != 0) {
             cursor_start -= python::len(completions[0].attr("name_with_symbols")) - python::len(completions[0].attr("complete"));
+            DEBUG_STREAM(" start: " << cursor_start);
             for (python::handle completion : completions) {
-                matches.push_back(completion.attr("name_with_symbols").cast<std::string>());
+                std::string sym = completion.attr("name_with_symbols").cast<std::string>();
+                std::string typ = completion.attr("type").cast<std::string>();
+                matches.push_back(sym);
+                nl::json tmp_;
+                tmp_["type"] = typ;
+                tmp_["text"] = sym;
+                //tmp_["start"] = ; // not implemented
+                //tmp_["end"]   = ; // not implemented
+                //tmp_["signature"] = ; // not implemented
+                meta_list.push_back(tmp_);
             }
         }
+        DEBUG_STREAM(" len(maches): " << matches.size());
+        DEBUG_STREAM(" cur_end: " << cursor_pos);
         nl::json res;
         res["cursor_start"] = cursor_start;
         res["cursor_end"] = cursor_pos;
         res["matches"] = matches;
-        res["metadata"] = nl::json::object();
+        nl::json meta00;
+        meta00["_jupyter_types_experimental"] = meta_list;
+        res["metadata"] = meta00;
         res["status"] = "ok";
         return res;
 #if 0
@@ -203,13 +243,15 @@ namespace cnoid
         python::str token_ = impl->token_at_cursor(code, cursor_pos);
         //DEBUG_STREAM(" " << detail_level << "/" << cursor_pos << " [" << code << "](" <<
         //             code.size() << ") : " << token_);
+        DEBUG_STREAM(" detail: " << detail_level);
         DEBUG_STREAM(" token : " << token_);
         python::object pobj_ = impl->findObject(token_);
         if(pobj_.ptr() == NULL) { // fail to find object
             DEBUG_STREAM(" fail");
             return xeus::create_inspect_reply();
         } else {
-            python::dict pdic_ = impl->inspector.attr("_get_info")(pobj_);
+            python::dict pdic_ = impl->inspector.attr("_get_info")(pobj_,
+                                                                   "detail_level"_a=detail_level);
             nl::json res;
             for(auto it = pdic_.begin(); it != pdic_.end(); it++) {
                 //DEBUG_STREAM(" " << it->first.cast<std::string>());
