@@ -121,26 +121,49 @@ namespace cnoid
             }
         }
 
-        if(code.size() > 0 && code[0] == '%') {
+        if (code.size() > 0 && code[0] == '%') {
             res = execute_choreonoid(execution_counter, code.substr(1), silent, store_history,
                                      user_expressions, allow_stdin);
-        } else if(code.size() > 0 && code[0] == '?') {
-            python::gil_scoped_acquire lock;
-
-            python::object pobj_ = impl->findObject(code.substr(1));
-            if(pobj_.ptr() != NULL) {
-                python::dict pdic_ = impl->inspector.attr("_get_info")(pobj_);
-                nl::json pub_;
-                pub_["text/plain"] = pdic_["text/plain"].cast<std::string>();
-#if 0
-                for(auto it = pdic_.begin(); it != pdic_.end(); it++) {
-                    DEBUG_STREAM(" " << it->first.cast<std::string>());
-                    DEBUG_STREAM(" " << it->second.cast<std::string>());
-                    pub_[it->first.cast<std::string>()] = it->second.cast<std::string>();
-                }
-#endif
-                publish_execution_result(execution_counter, std::move(pub_), nl::json::object());
+        } else if (code.size() > 0 && ( code[0] == '?' || code[code.size()-1] == '?' )) {
+            std::string ncode = code;
+            if (ncode[0] == '?') {
+                ncode = ncode.substr(1);
             }
+            if (ncode[ncode.size()-1] == '?' ) {
+                ncode = ncode.substr(0, ncode.size()-1);
+            }
+            int detail_level = 0;
+            if (ncode.size() > 1 && (ncode[0] == '?' || ncode[ncode.size()-1] == '?')) {
+                detail_level = 1;
+                if (ncode[0] == '?') {
+                    ncode = ncode.substr(1);
+                }
+                if (ncode[ncode.size()-1] == '?' ) {
+                    ncode = ncode.substr(0, ncode.size()-1);
+                }
+            }
+            if(ncode.size() > 0) {
+                DEBUG_STREAM(" ncode:>|" << ncode << "|<");
+                python::gil_scoped_acquire lock;
+                python::object pobj_ = impl->findObject(ncode);
+                if (pobj_.ptr() != NULL) {
+                    python::dict pdic_ = impl->inspector.attr("_get_info")(pobj_,
+                                                                           "detail_level"_a=detail_level);
+                    nl::json pub_;
+                    pub_["text/plain"] = pdic_["text/plain"].cast<std::string>();
+#if 0
+                    for(auto it = pdic_.begin(); it != pdic_.end(); it++) {
+                        DEBUG_STREAM(" " << it->first.cast<std::string>());
+                        DEBUG_STREAM(" " << it->second.cast<std::string>());
+                        pub_[it->first.cast<std::string>()] = it->second.cast<std::string>();
+                    }
+#endif
+                    publish_execution_result(execution_counter, std::move(pub_), nl::json::object());
+                }
+            }
+        } else if (code.size() > 0 && code[0] == '!') {
+            // do nothing
+            // not implemented yet
         } else {
             bool dummy;
             res = execute_python(cur_code_, dummy, false);
