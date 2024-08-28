@@ -8,6 +8,7 @@
 #include <sstream>
 
 namespace nl = nlohmann;
+using namespace pybind11::literals; // using _a
 
 namespace cnoid
 {
@@ -219,13 +220,15 @@ namespace cnoid
         python::str token_ = impl->token_at_cursor(code, cursor_pos);
         //DEBUG_STREAM(" " << detail_level << "/" << cursor_pos << " [" << code << "](" <<
         //             code.size() << ") : " << token_);
+        DEBUG_STREAM(" detail: " << detail_level);
         DEBUG_STREAM(" token : " << token_);
         python::object pobj_ = impl->findObject(token_);
         if(pobj_.ptr() == NULL) { // fail to find object
             DEBUG_STREAM(" fail");
             return xeus::create_inspect_reply();
         } else {
-            python::dict pdic_ = impl->inspector.attr("_get_info")(pobj_);
+            python::dict pdic_ = impl->inspector.attr("_get_info")(pobj_,
+                                                                   "detail_level"_a=detail_level);
             nl::json res;
             for(auto it = pdic_.begin(); it != pdic_.end(); it++) {
                 //DEBUG_STREAM(" " << it->first.cast<std::string>());
