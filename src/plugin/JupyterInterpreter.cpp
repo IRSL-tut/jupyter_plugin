@@ -168,21 +168,37 @@ namespace cnoid
         DEBUG_STREAM(" " << cursor_pos << " >>" << code);
         python::gil_scoped_acquire lock;
         std::vector<std::string> matches;
+        std::vector<nl::json> meta_list;
         int cursor_start = cursor_pos;
         std::string sub_code = code.substr(0, cursor_pos);
         python::list completions = impl->jedi_Interpreter(sub_code, python::make_tuple(python::globals())).attr("complete")();
-
+        DEBUG_STREAM(" sub:" << sub_code);
+        DEBUG_STREAM(" len: " << python::len(completions));
         if (python::len(completions) != 0) {
             cursor_start -= python::len(completions[0].attr("name_with_symbols")) - python::len(completions[0].attr("complete"));
+            DEBUG_STREAM(" start: " << cursor_start);
             for (python::handle completion : completions) {
-                matches.push_back(completion.attr("name_with_symbols").cast<std::string>());
+                std::string sym = completion.attr("name_with_symbols").cast<std::string>();
+                std::string typ = completion.attr("type").cast<std::string>();
+                matches.push_back(sym);
+                nl::json tmp_;
+                tmp_["type"] = typ;
+                tmp_["text"] = sym;
+                //tmp_["start"] = ; // not implemented
+                //tmp_["end"]   = ; // not implemented
+                //tmp_["signature"] = ; // not implemented
+                meta_list.push_back(tmp_);
             }
         }
+        DEBUG_STREAM(" len(maches): " << matches.size());
+        DEBUG_STREAM(" cur_end: " << cursor_pos);
         nl::json res;
         res["cursor_start"] = cursor_start;
         res["cursor_end"] = cursor_pos;
         res["matches"] = matches;
-        res["metadata"] = nl::json::object();
+        nl::json meta00;
+        meta00["_jupyter_types_experimental"] = meta_list;
+        res["metadata"] = meta00;
         res["status"] = "ok";
         return res;
 #if 0
