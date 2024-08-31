@@ -22,12 +22,20 @@ namespace cnoid
         PythonProcess *impl;
     private:
         void configure_impl() override;
+#if defined(USE_XEUS5)
+        void execute_request_impl(send_reply_callback cb,
+                                  int execution_counter,
+                                  const std::string& code,
+                                  xeus::execute_request_config config,
+                                  nl::json user_expressions) override;
+#else
         nl::json execute_request_impl(int execution_counter,
                                       const std::string& code,
                                       bool silent,
                                       bool store_history,
                                       nl::json user_expressions,
                                       bool allow_stdin) override;
+#endif
         nl::json complete_request_impl(const std::string& code,
                                        int cursor_pos) override;
         nl::json inspect_request_impl(const std::string& code,

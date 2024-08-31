@@ -3,8 +3,11 @@
 // xeus
 #include <xeus/xkernel.hpp>
 #include <xeus/xkernel_configuration.hpp>
-#ifdef USE_XEUS3
+#if defined(USE_XEUS3) || defined(USE_XEUS5)
 #include <xeus-zmq/xserver_zmq.hpp>
+#if defined(USE_XEUS5)
+#include <xeus-zmq/xzmq_context.hpp>
+#endif
 #else
 #include <xeus/xserver_zmq.hpp>
 #endif
@@ -322,16 +325,29 @@ void PythonProcess::interpreterThread()
     if(connection_file.size() == 0) return;
 
     xeus::xconfiguration config = xeus::load_configuration(connection_file);
+#if defined(USE_XEUS5)
+    std::unique_ptr<xeus::xcontext> context = xeus::make_zmq_context();
+#else
     auto context = xeus::make_context<zmq::context_t>();
-
+#endif
     // Create interpreter instance
     using interpreter_ptr = std::unique_ptr<cnoid::JupyterInterpreter>;
     interpreter_ptr interpreter = interpreter_ptr(new cnoid::JupyterInterpreter());
     interpreter->impl = this;
     // Create kernel instance and start it
-    xeus::xkernel kernel(config, xeus::get_user_name(), std::move(context),
-                         std::move(interpreter), xeus::make_xserver_zmq);
-
+#if defined(USE_XEUS5)
+    xeus::xkernel kernel(config,
+                         xeus::get_user_name(),
+                         std::move(context),
+                         std::move(interpreter),
+                         xeus::make_xserver_default);
+#else
+    xeus::xkernel kernel(config,
+                         xeus::get_user_name(),
+                         std::move(context),
+                         std::move(interpreter),
+                         xeus::make_xserver_zmq);
+#endif
     kernel.start();
 }
 void PythonProcess::procPyRequest(const std::string &line)
