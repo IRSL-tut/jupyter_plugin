@@ -33,6 +33,11 @@ public:
     python::object token_at_cursor;
     python::object jedi_Interpreter;//
 
+    python::module builtins;
+    python::module ast_mod;
+    python::object ast_interactive;
+    python::object bltin_compile;
+
     void onSigOptionsParsed(boost::program_options::variables_map& variables);
     bool initialize();
     bool finalize();

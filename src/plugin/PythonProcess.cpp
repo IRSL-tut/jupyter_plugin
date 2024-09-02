@@ -21,6 +21,9 @@
 #include <cnoid/SceneView>
 #include <cnoid/SceneWidget>
 
+//
+#include "pybind11/eval.h"
+
 //#define IRSL_DEBUG
 #include "irsl_debug.h"
 
@@ -167,8 +170,11 @@ bool PythonProcess::setupPython()
     }
 #endif
 
-    pybind11::module builtins = pybind11::module::import("builtins");
-    //m_sys_input = builtins.attr("input");
+    ast_mod = python::module::import("ast");
+    ast_interactive =  ast_mod.attr("Interactive");
+    builtins = pybind11::module::import("builtins");
+    bltin_compile = builtins.attr("compile");
+
     builtins.attr("input") = pybind11::cpp_function(&cpp_input, pybind11::arg("prompt") = "");
 
     connect(this, &PythonProcess::sendComRequest,
@@ -185,6 +191,70 @@ bool PythonProcess::finalize()
     DEBUG_PRINT();
     return true;
 }
+//// exec version
+static inline void exec(python::object &_code)
+{
+    python::exec("exec(_code_, _scope_, _scope_)", python::globals(), python::dict(python::arg("_code_") = _code, python::arg("_scope_") = python::globals()));
+}
+bool PythonProcess::putCommand(const std::string &_com)
+{
+    bool ret = true;
+    python::gil_scoped_acquire lock;
+    orgStdout = sys.attr("stdout");
+    orgStderr = sys.attr("stderr");
+    orgStdin  = sys.attr("stdin");
+    out_strm.str("");
+    out_strm.clear();
+    err_strm.str("");
+    err_strm.clear();
+    sys.attr("stdout") = consoleOut;
+    sys.attr("stderr") = consoleErr;
+    sys.attr("stdin")  = consoleIn;
+
+    DEBUG_STREAM(" exec: " << _com);
+    ////
+    try {
+        std::string code_copy(_com);
+        const std::string filename("<input>");
+
+        // Parse code to AST
+        python::object code_ast  = ast_mod.attr("parse")(code_copy, "<input>", "exec");
+        python::list expressions = code_ast.attr("body");
+
+        python::object last_stmt = expressions[ python::len(expressions) - 1 ];
+        if (python::isinstance(last_stmt, ast_mod.attr("Expr"))) {
+            code_ast.attr("body").attr("pop")();
+            python::list interactive_nodes;
+            interactive_nodes.append(last_stmt);
+
+            python::object interactive_ast = ast_interactive(interactive_nodes);
+            python::object compiled_code   = bltin_compile(code_ast, filename, "exec");
+
+            python::object compiled_interactive_code = bltin_compile(interactive_ast, filename, "single");
+            exec(compiled_code);
+            exec(compiled_interactive_code);
+        } else {
+            python::object compiled_code = bltin_compile(code_ast, filename, "exec");
+            exec(compiled_code);
+        }
+        //kernel_res["status"] = "ok";
+        //kernel_res["user_expressions"] = nl::json::object();
+        //kernel_res["payload"] = nl::json::array();
+    } catch (python::error_already_set& e) {
+        // error
+        // TODO
+        DEBUG_STREAM(" error: " << e.what());
+        python::print(e.what(), python::arg("file") = consoleErr);
+        ret = false;
+    }
+    sys.attr("stdout") = orgStdout;
+    sys.attr("stderr") = orgStderr;
+    sys.attr("stdin")  = orgStdin;
+
+    return ret;
+}
+#if 0
+//// interpreter version
 bool PythonProcess::putCommand(const std::string &_com)
 {
     bool ret;
@@ -221,6 +291,7 @@ bool PythonProcess::putCommand(const std::string &_com)
 
     return ret;
 }
+#endif
 void PythonProcess::interpreterThread()
 {
     if(connection_file.size() == 0) return;
