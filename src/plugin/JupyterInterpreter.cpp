@@ -293,6 +293,8 @@ namespace cnoid
                 ERROR_STREAM(" :ipython transformer failed: " << ret.size());
             }
         }
+        //// OLD implements
+        //// may not enter below unless error occurred
         bool new_enter = !after_is_complete;
         after_is_complete = true;
         int cur_pos = code.size();
@@ -377,13 +379,40 @@ namespace cnoid
 
     nl::json JupyterInterpreter::kernel_info_request_impl()
     {
-        return xeus::create_info_reply("",
-                                       "Choreonoid",
-                                       "0.1.0",
-                                       "python",
-                                       "3.7",
-                                       "text/x-python",
-                                       ".py");
+#if 0 // copy from xhelper.hpp
+    nl::json create_info_reply(const std::string& protocol_version = std::string(),
+                               const std::string& implementation = std::string(),
+                               const std::string& implementation_version = std::string(),
+                               const std::string& language_name = std::string(),
+                               const std::string& language_version = std::string(),
+                               const std::string& language_mimetype = std::string(),
+                               const std::string& language_file_extension = std::string(),
+                               const std::string& pygments_lexer = std::string(),
+                               const std::string& language_codemirror_mode = std::string(),
+                               const std::string& language_nbconvert_exporter = std::string(),
+                               const std::string& banner = std::string(),
+                               const bool debugger = false,
+                               const nl::json& help_links = nl::json::array());
+#endif
+        return xeus::create_info_reply("",               //protocol_version
+                                       "Choreonoid",     //implementation
+                                       "0.1.0",          //implementation_version
+                                       "python",         //language_name
+                                       "3.7",            //language_version
+                                       "text/x-python",  //language_mimetype
+                                       ".py",            //language_file_extension
+                                       "ipython3",       //pygments_lexer
+                                       "",               //language_codemirror
+                                       "",               //language_nbconvert_exporter
+R"_IRSL_(     ######################################
+    ##                                  ##
+   ##  Choreonoid jupyter by IRSL-tut  ##
+  ##    https://github.com/IRSL-tut   ##
+ ##                                  ##
+######################################
+
+# start exec(open('/choreonoid_ws/install/share/irsl_choreonoid/sample/irsl_import.py').read()))_IRSL_"   //banner
+            );
     }
     void JupyterInterpreter::shutdown_request_impl()
     {
@@ -417,6 +446,30 @@ namespace cnoid
         execute_python(code, res, true);
         return res;
     }
+    //// exec version
+    bool JupyterInterpreter::execute_python(const std::string& code, bool &is_complete, bool in_complete)
+    {
+        bool error_ = false;
+        oss_out.str("");
+        oss_out.clear(std::stringstream::goodbit);
+        oss_err.str("");
+        oss_err.clear(std::stringstream::goodbit);
+
+        DEBUG_STREAM("in(code): " << code);
+        impl->sendPyRequest(code);
+
+        oss_out << impl->out_strm.str();
+        if (impl->err_strm.str().size() > 0) {
+            oss_err << impl->err_strm.str();
+            error_ = true;
+        }
+
+        DEBUG_STREAM(" oss_out:|" << oss_out.str() << "|:");
+        DEBUG_STREAM(" oss_err:|" << oss_err.str() << "|:");
+        return !error_;
+    }
+#if 0
+    //// interpreter version
     bool JupyterInterpreter::execute_python(const std::string& code, bool &is_complete, bool in_complete)
     {
         std::vector<std::string> lines_;
@@ -484,6 +537,7 @@ namespace cnoid
         if(error_) oss_err << impl->err_strm.str();
         return true;
     }
+#endif
 #if 0
     //// direct run from another thread
     bool JupyterInterpreter::execute_python(const std::string& code, bool &is_complete, bool in_complete)
