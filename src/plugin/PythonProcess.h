@@ -38,7 +38,11 @@ public:
     python::object ast_interactive;
     python::object bltin_compile;
 
+#ifdef USE_OLD_OPTION
     void onSigOptionsParsed(boost::program_options::variables_map& variables);
+#else
+    void onSigOptionsParsed(OptionManager *_om);
+#endif
     bool initialize();
     bool finalize();
     bool putCommand(const std::string &_com);
