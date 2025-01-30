@@ -15,6 +15,10 @@ if (NOT WIN32)
 endif()
 #add_definitions(-DIRSL_DEBUG)
 
+if ( ${CHOREONOID_VERSION_STRING} VERSION_LESS "2.1.0" )
+  add_definitions(-DUSE_OLD_OPTION)
+endif()
+
 set(xeus_REQUIRED_VERSION 0.19.1)
 #set(cppzmq_REQUIRED_VERSION 4.3.0)
 find_package(xeus ${xeus_REQUIRED_VERSION} REQUIRED)

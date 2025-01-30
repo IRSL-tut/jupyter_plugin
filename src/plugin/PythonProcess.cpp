@@ -29,7 +29,9 @@
 
 using namespace cnoid;
 
+#ifdef USE_OLD_OPTION
 namespace po = boost::program_options;
+#endif
 namespace filesystem = cnoid::stdx::filesystem;
 
 namespace {
@@ -93,6 +95,7 @@ std::string cpp_input(const std::string &prompt)
 }
 
 ////
+#ifdef USE_OLD_OPTION
 void PythonProcess::onSigOptionsParsed(po::variables_map& variables)
 {
     DEBUG_PRINT();
@@ -104,13 +107,35 @@ void PythonProcess::onSigOptionsParsed(po::variables_map& variables)
         th_interp.detach();
     }
 }
+#else
+void PythonProcess::onSigOptionsParsed(OptionManager *_om)
+{
+    DEBUG_PRINT();
+    if(_om->count("--jupyter-connection")) {
+        auto op = _om->get_option("--jupyter-connection");
+        connection_file = op->as<std::string>();
+        DEBUG_STREAM(" jupyter-connection:" << connection_file);
+        bool res = setupPython();
+        std::thread th_interp(&PythonProcess::interpreterThread, this);
+        th_interp.detach();
+    }
+}
+#endif
+
 bool PythonProcess::initialize()
 {
     DEBUG_PRINT();
+#ifdef USE_OLD_OPTION
     OptionManager& om = self->optionManager();
     om.addOption("jupyter-connection", po::value<std::string>(), "connection file for jupyter");
     om.sigOptionsParsed(1).connect(
         [this](po::variables_map& _v) { onSigOptionsParsed(_v); } );
+#else
+    auto om = OptionManager::instance();
+    om->add_option("--jupyter-connection", "connection file for jupyter");
+    om->sigOptionsParsed(1).connect(
+        [this](OptionManager *_om) { onSigOptionsParsed(_om); } );
+#endif
 
     return true;
 }
