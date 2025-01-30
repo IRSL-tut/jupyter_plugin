@@ -38,7 +38,7 @@ endif()
 
 ## for Qt signal
 set(qtheaders PythonProcess.h)
-QT5_WRAP_CPP(qtsources ${qtheaders})
+choreonoid_qt_wrap_cpp(qtsources ${qtheaders})
 set(sources ${sources} ${qtsources})
 
 if(${CMAKE_CURRENT_SOURCE_DIR} STREQUAL ${CMAKE_SOURCE_DIR})
