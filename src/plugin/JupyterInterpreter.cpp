@@ -30,6 +30,42 @@ namespace cnoid
         }
         return true;
     }
+    bool split_code2(std::vector<std::string> &res, const std::string &_code, const char elm = '\n', const char elm2 = '\0')
+    {
+        int start_ = 0;
+        int e1_ = _code.find_first_of(elm);
+        int e2_ = _code.find_first_of(elm2);
+        int end_;
+        if (e1_ == std::string::npos && e2_ == std::string::npos ) {
+            return false;
+        } else if (e1_ != std::string::npos) {
+            end_ = e1_;
+        } else if (e2_ != std::string::npos) {
+            end_ = e2_;
+        } else {
+            end_ = std::min(e1_, e2_);
+        }
+
+        while(start_ < _code.size()){
+            if (end_ - start_ > 0) {
+                std::string sub(_code, start_, end_ - start_);
+                res.push_back(sub);
+            }
+            start_ = end_ + 1;
+            int e1_ = _code.find_first_of(elm, start_);
+            int e2_ = _code.find_first_of(elm2, start_);
+            if (e1_ == std::string::npos && e2_ == std::string::npos ) {
+                end_ = _code.size();
+            } else if (e1_ != std::string::npos) {
+                end_ = e1_;
+            } else if (e2_ != std::string::npos) {
+                end_ = e2_;
+            } else {
+                end_ = std::min(e1_, e2_);
+            }
+        }
+        return true;
+    }
     inline int right_trim_len(const std::string &_code) // start=0, len=right_trim_len
     {
         // TODO: rewrite / find_last_not_of
@@ -646,6 +682,43 @@ R"_IRSL_(     ######################################
             pub_data["image/png"] = impl->data.toBase64().data();
             publish_execution_result(execution_counter, std::move(pub_data), nl::json::object());
             return true;
+        }
+        //
+        {
+            std::vector<std::string> res;
+            split_code2(res, code, ' ', '\t');
+            if ( res[0] == "image" ) {
+                std::ifstream inputFile(res[1], std::ios::binary);
+                if (!inputFile.is_open()) {
+                    std::ostringstream oss_;
+                    oss_ << "Error opening file! : " << res[1];
+                    std::cerr << oss_.str() << std::endl;
+                    std::vector<std::string> tb;
+                    publish_execution_error(oss_.str(), "003", tb);
+                    return false;
+                }
+                inputFile.seekg(0, std::ios::end);
+                std::streamsize fileSize = inputFile.tellg();
+                inputFile.seekg(0, std::ios::beg);
+                QByteArray data;
+                data.resize(fileSize);
+                inputFile.read(data.data(), fileSize);
+                if (!inputFile.good()) {
+                    inputFile.close();
+                    std::ostringstream oss_;
+                    oss_ << "Error reading file! : " << res[1];
+                    std::cerr << oss_.str() << std::endl;
+                    std::vector<std::string> tb;
+                    publish_execution_error(oss_.str(), "003", tb);
+                    return false;
+                }
+                nl::json pub_data;
+                pub_data["image/png"] = data.toBase64().data();
+                //std::cout << "size: " << fileSize << std::endl;
+                //std::cout << "base64: " << pub_data["image/png"] << std::endl;
+                publish_execution_result(execution_counter, std::move(pub_data), nl::json::object());
+                return true;
+            }
         }
         return false;
     }
