@@ -12,7 +12,7 @@ SHELL ["/bin/bash", "-c"]
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt update -q -qq && \
-    apt install -q -qq -y libssl-dev openssl cmake g++ pkg-config git uuid-dev libsodium-dev && \
+    apt install -q -qq -y wget cmake g++ git openssl pkg-config libzmq5-dev uuid-dev libssl-dev libsodium-dev && \
     apt clean && \
     rm -rf /var/lib/apt/lists/
 
