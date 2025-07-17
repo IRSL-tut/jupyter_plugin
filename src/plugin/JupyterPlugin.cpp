@@ -17,7 +17,6 @@ JupyterPlugin* JupyterPlugin::instance()
 JupyterPlugin::JupyterPlugin()
     : Plugin("Jupyter"), impl(nullptr)
 {
-    require("Python");
     instance_ = this;
 #ifdef EXT_BUNDLE
     impl = new PythonProcess(this);
@@ -59,9 +58,9 @@ bool JupyterPlugin::finalize()
 const char* JupyterPlugin::description() const
 {
     static std::string text =
-        fmt::format("Jupyter Plugin Version {}\n", CNOID_FULL_VERSION_STRING) +
+        fmt::format("Jupyter Plugin (xeus-python) Version {}\n", CNOID_FULL_VERSION_STRING) +
         "\n" +
-        "Copyrigh (c) 2022 IRSL-tut Development Team.\n"
+        "Copyrigh (c) 2025 IRSL-tut Development Team.\n"
         "\n" +
         MITLicenseText() +
         "\n"  ;

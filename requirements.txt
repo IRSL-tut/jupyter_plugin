@@ -5,4 +5,9 @@ jupyter-console
 jedi-language-server
 jupyterlab-lsp
 python-lsp-server[all]
+bash_kernel
 jupytext
+xeus_python_shell
+ipywidgets
+ipycanvas
+sidecar

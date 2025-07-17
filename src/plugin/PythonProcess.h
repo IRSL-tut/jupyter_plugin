@@ -1,68 +1,69 @@
 #ifndef CNOID_JUPYTER_PLUGIN_PYTHON_PROCESS_H
 #define CNOID_JUPYTER_PLUGIN_PYTHON_PROCESS_H
+
 #include <QObject>
-#include <cnoid/PythonPlugin>
+#include <QThread>
 #include <cnoid/OptionManager> //option
-#include <sstream>
+
+#include "nlohmann/json.hpp"
+#include "JupyterPlugin.h"
+#include <xeus/xinterpreter.hpp>
+
+#include <sys/types.h>
+
+namespace nl = nlohmann;
 
 namespace cnoid {
-
-class JupyterPlugin;
 
 class PythonProcess : public QObject
 {
     Q_OBJECT;
 public:
     PythonProcess(JupyterPlugin *_self) : self(_self)
-    { self = _self; }
-    JupyterPlugin *self;
+    {
+        self = _self;
+    }
     std::string connection_file;
-
-    python::module mainModule;
-    python::object globalNamespace;
-    python::object consoleOut;
-    python::object consoleErr;
-    python::object consoleIn;
-    python::object sys;
-    python::object orgStdout;
-    python::object orgStderr;
-    python::object orgStdin;
-    python::object interpreter;
-    python::object inspector;
-    python::object transformer;
-    python::object token_at_cursor;
-    python::object jedi_Interpreter;//
-
-    python::module builtins;
-    python::module ast_mod;
-    python::object ast_interactive;
-    python::object bltin_compile;
 
 #ifdef USE_OLD_OPTION
     void onSigOptionsParsed(boost::program_options::variables_map& variables);
 #else
     void onSigOptionsParsed(OptionManager *_om);
 #endif
+
     bool initialize();
     bool finalize();
-    bool putCommand(const std::string &_com);
-    //void inspectObject(const std::string &obj_name);
-    python::object findObject(const std::string &obj_name);
+    void shutdown_impl();
+    //
+    void proc();
+    bool blocking_poll();
 
-    QByteArray data;
-    std::ostringstream out_strm;
-    std::ostringstream err_strm;
-    bool is_complete;
 public Q_SLOTS:
-    void procComRequest(const QString &com);
-    void procPyRequest(const std::string &line);
-Q_SIGNALS:
-    void sendComRequest(const QString &msg);
-    void sendPyRequest(const std::string &line);
-private:
-    bool setupPython();
-    void interpreterThread();
-};
-}
+    void procRequest();
 
+private:
+    JupyterPlugin *self;
+    bool setupPython();
+
+private:
+    class Impl;
+    Impl *impl;
+};
+
+class Runner : public QThread
+{
+    Q_OBJECT;
+public:
+    Runner(PythonProcess *pp);
+    void run() override;
+
+Q_SIGNALS:
+    void sendRequest();
+
+private:
+    class Impl;
+    Impl *impl;
+};
+
+}
 #endif
