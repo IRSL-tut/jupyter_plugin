@@ -122,18 +122,41 @@ namespace cnoid
             res = _code.substr(pos+1);
         }
     }
+#if defined(USE_XEUS5)
+    void JupyterInterpreter::execute_request_impl(send_reply_callback cb,
+                                                  int execution_counter,
+                                                  const std::string& code,
+                                                  xeus::execute_request_config config,
+                                                  nl::json user_expressions)
+#else
     nl::json JupyterInterpreter::execute_request_impl(int execution_counter, // Typically the cell number
                                                       const std::string& code, // Code to execute
                                                       bool silent, bool store_history,
                                                       nl::json user_expressions,
                                                       bool allow_stdin)
+#endif
     {
+#if defined(USE_XEUS5)
+        bool silent = config.silent;
+        bool store_history = config.store_history;
+        bool allow_stdin = config.allow_stdin;
+#endif
         DEBUG_STREAM(" > ec: " << execution_counter << ", silent: " << silent << ", store:" << store_history << ", stdin:" << allow_stdin);
         DEBUG_STREAM(" > uex: " << user_expressions);
         DEBUG_STREAM(" > code(" << code.size() << ")>|" << code <<"|<");
 
         if(!impl) { // error??
+#if defined(USE_XEUS5)
+            INFO_STREAM("error0");
+            {
+                nl::json kernel_res;
+                kernel_res["status"] = "ok";
+                cb(kernel_res);
+            }
+            return;
+#else
             return xeus::create_successful_reply();
+#endif
         }
         bool res = false;
         std::string cur_code_(code);
@@ -145,7 +168,16 @@ namespace cnoid
                 not_in_scope = false;
                 DEBUG_STREAM(" exec: after is_complete, finish exec");
                 publish_result_and_error(execution_counter);
+#if defined(USE_XEUS5)
+                {
+                    nl::json kernel_res;
+                    kernel_res["status"] = "ok";
+                    cb(kernel_res);
+                }
+                return;
+#else
                 return xeus::create_successful_reply();
+#endif
             } else { // in scope
                 DEBUG_STREAM(" exec: after is_complete, in scope : " << executed_pos << " | " << code.size());
                 // remove_first_line / execute scope with multi-line
@@ -205,11 +237,19 @@ namespace cnoid
             res = execute_python(cur_code_, dummy, false);
             publish_result_and_error(execution_counter);
         }
-
+#if defined(USE_XEUS5)
+        {
+            nl::json kernel_res;
+            kernel_res["status"] = "ok";
+            cb(kernel_res);
+        }
+        return;
+#else
         if (res) {
             return xeus::create_successful_reply();
         }
         return xeus::create_successful_reply(); // [todo]
+#endif
 #if 0
         nl::json create_error_reply(const std::string& ename = std::string(),
                                     const std::string& evalue = std::string(),

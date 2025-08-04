@@ -29,11 +29,17 @@ message("xeus: ${xeus_VERSION}")
 if (${xeus_VERSION} VERSION_LESS 3.0.0)
   set(xeuslib xeus)
   message("using XEUS2 : ${xeus_VERSION} / ${xeuslib}")
-else()
+elseif (${xeus_VERSION} VERSION_LESS 4.0.0)
   find_package(xeus-zmq  REQUIRED)
   set(xeuslib xeus xeus-zmq)
   add_definitions(-DUSE_XEUS3)
   message("using XEUS3 : ${xeus_VERSION} / ${xeuslib}")
+else()
+  ### using XEUS5
+  find_package(xeus-zmq  REQUIRED)
+  set(xeuslib xeus xeus-zmq)
+  add_definitions(-DUSE_XEUS5)
+  message("using XEUS5 : ${xeus_VERSION} / ${xeuslib}")
 endif()
 
 ## for Qt signal
