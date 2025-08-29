@@ -84,6 +84,33 @@ _________               .__    .___
     return result;
 }
 
+nl::json cnoid_interpreter::is_complete_request_impl(const std::string& code)
+{
+    py::gil_scoped_acquire acquire;
+    nl::json kernel_res;
+
+    py::object transformer_manager = py::getattr(m_ipython_shell, "input_transformer_manager", py::none());
+    if (transformer_manager.is_none())
+    {
+        transformer_manager = m_ipython_shell.attr("input_splitter");
+    }
+
+    py::list result = transformer_manager.attr("check_complete")(code);
+    auto status = result[0].cast<std::string>();
+
+    kernel_res["status"] = status;
+#if 0
+    if (status.compare("incomplete") == 0)
+    {
+        kernel_res["indent"] = std::string(result[1].cast<std::size_t>(), ' ');
+    }
+#else
+    // disable auto indent
+    kernel_res["indent"] = "";
+#endif
+    return kernel_res;
+}
+
 void cnoid_interpreter::shutdown_request_impl()
 {
     if (!!process) {
