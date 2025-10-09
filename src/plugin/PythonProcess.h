@@ -50,6 +50,7 @@ private:
     Impl *impl;
 };
 
+#ifndef USE_BLOCKING
 class Runner : public QThread
 {
     Q_OBJECT;
@@ -64,6 +65,8 @@ private:
     class Impl;
     Impl *impl;
 };
+
+#endif
 
 }
 #endif

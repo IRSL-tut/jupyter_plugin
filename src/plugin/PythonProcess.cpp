@@ -73,16 +73,22 @@ public:
     //xeus::xshell_default_runner* p_runner;
     xeus::non_blocking_runner* p_runner;
 
-    QTimer timer;
-
     bool use_jupyter;
 
+#ifdef USE_BLOCKING
+    QTimer timer;
+#else
     Runner *qrunner;
+#endif
 };
+
 }
 
 PythonProcess::Impl::Impl(PythonProcess *_self) : self(_self), interpreter(nullptr), python(nullptr),
-                                                  p_runner(nullptr), timer(_self), use_jupyter(false)
+                                                  p_runner(nullptr), use_jupyter(false)
+#ifdef USE_BLOCKING
+                                                  ,timer(_self)
+#endif
 {
 }
 
@@ -149,6 +155,8 @@ void PythonProcess::shutdown_impl()
     DEBUG_PRINT();
     INFO_STREAM(" shutdown_impl");
     impl->kernel->get_server().stop();
+    INFO_STREAM(" shutdown_impl::stopped");
+
     QCoreApplication::quit(); // [TODO] exit choreonoid, is it OK?
 }
 
@@ -181,6 +189,7 @@ bool PythonProcess::setupPython()
         std::unique_ptr<xeus::xcontext> context = xeus::make_zmq_context();
         Impl::interpreter_ptr interpreter_(new cnoid_interpreter());
         impl->interpreter = dynamic_cast<cnoid_interpreter *>(interpreter_.get());
+        impl->interpreter->process = this;
         xeus::xconfiguration config = xeus::load_configuration(connection_file);
         impl->kernel = Impl::kernel_ptr(new xeus::xkernel(config,
                                                           xeus::get_user_name(),
@@ -204,16 +213,18 @@ bool PythonProcess::setupPython()
                                                           xpyt::make_python_debugger,
                                                           debugger_config));
         impl->kernel->start();
-#if 0
+#ifdef USE_BLOCKING
         // timered non_blocking poll
         impl->timer.setInterval(0);
         connect(&(impl->timer), &QTimer::timeout, this, &PythonProcess::proc);
         impl->timer.start();
-#endif
+#else
+        // non-blocking using thread
         impl->qrunner = new Runner(impl->self);
         connect(impl->qrunner, &Runner::sendRequest,
                 this, &PythonProcess::procRequest, Qt::BlockingQueuedConnection);
         impl->qrunner->start();
+#endif
     } else {
         std::unique_ptr<xeus::xcontext> context = xeus::make_zmq_context();
         Impl::interpreter_ptr interpreter_(new cnoid_interpreter());
@@ -274,6 +285,7 @@ void PythonProcess::procRequest()
     proc();
 }
 
+#ifndef USE_BLOCKING
 class Runner::Impl {
 public:
     Impl() { };
@@ -297,4 +309,4 @@ void Runner::run()
         }
     }
 }
-
+#endif
