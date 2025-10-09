@@ -113,7 +113,9 @@ nl::json cnoid_interpreter::is_complete_request_impl(const std::string& code)
 
 void cnoid_interpreter::shutdown_request_impl()
 {
+    std::cerr << "shutdown_request_impl" << std::endl;
     if (!!process) {
+        std::cerr << "call shutdown_impl()" << std::endl;
         process->shutdown_impl();
     }
 }
