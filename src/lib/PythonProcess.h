@@ -3,10 +3,8 @@
 
 #include <QObject>
 #include <QThread>
-#include <cnoid/OptionManager> //option
 
 #include "nlohmann/json.hpp"
-#include "JupyterPlugin.h"
 #include <xeus/xinterpreter.hpp>
 
 #include <sys/types.h>
@@ -19,19 +17,12 @@ class PythonProcess : public QObject
 {
     Q_OBJECT;
 public:
-    PythonProcess(JupyterPlugin *_self) : self(_self)
+    PythonProcess(const std::string &connection_file)
     {
-        self = _self;
-    }
-    std::string connection_file;
+        initialize(connection_file);
+    };
 
-#ifdef USE_OLD_OPTION
-    void onSigOptionsParsed(boost::program_options::variables_map& variables);
-#else
-    void onSigOptionsParsed(OptionManager *_om);
-#endif
-
-    bool initialize();
+    bool initialize(const std::string &connection_file);
     bool finalize();
     void shutdown_impl();
     //
@@ -42,7 +33,6 @@ public Q_SLOTS:
     void procRequest();
 
 private:
-    JupyterPlugin *self;
     bool setupPython();
 
 private:
@@ -65,8 +55,7 @@ private:
     class Impl;
     Impl *impl;
 };
-
 #endif
 
-}
+};
 #endif

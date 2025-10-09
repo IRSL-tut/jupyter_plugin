@@ -14,6 +14,8 @@
 #include "xeus-python/xtraceback.hpp"
 #include "xeus-python/xutils.hpp"
 
+#include <iostream>
+
 using namespace cnoid;
 using namespace pybind11::literals; // for ""_a
 

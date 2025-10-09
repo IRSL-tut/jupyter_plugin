@@ -1,10 +1,12 @@
+//
 #include "PythonProcess.h"
 
-// cnoid
-#include <cnoid/UTF8>
-#include <cnoid/stdx/filesystem>
 // thread
 #include <thread>
+
+////
+#pragma push_macro("slots")
+#undef slots
 
 // xeus
 #include <xeus/xkernel.hpp>
@@ -33,6 +35,8 @@
 
 // HOTFIX
 #include <dlfcn.h>
+#pragma pop_macro("slots")
+////
 
 // for shutdown
 #include <QCoreApplication>
@@ -47,11 +51,8 @@
 #include <sys/types.h>
 #include <sys/syscall.h>
 
-using namespace cnoid;
-
-namespace filesystem = cnoid::stdx::filesystem;
-
 namespace cnoid {
+
 class PythonProcess::Impl
 {
 public:
@@ -60,6 +61,10 @@ public:
 public:
     PythonProcess *self;
 
+    bool use_jupyter;
+    std::string connection_file;
+
+    void *python; //// HOT-FIX
     std::unique_ptr<pybind11::scoped_interpreter> py_interpreter;
 
     using kernel_ptr = std::unique_ptr<xeus::xkernel>;
@@ -68,12 +73,7 @@ public:
     using interpreter_ptr = std::unique_ptr<xeus::xinterpreter>;
     cnoid_interpreter *interpreter;
 
-    void *python;
-
-    //xeus::xshell_default_runner* p_runner;
     xeus::non_blocking_runner* p_runner;
-
-    bool use_jupyter;
 
 #ifdef USE_BLOCKING
     QTimer timer;
@@ -84,10 +84,14 @@ public:
 
 }
 
-PythonProcess::Impl::Impl(PythonProcess *_self) : self(_self), interpreter(nullptr), python(nullptr),
-                                                  p_runner(nullptr), use_jupyter(false)
+using namespace cnoid;
+
+PythonProcess::Impl::Impl(PythonProcess *_self) : self(_self), use_jupyter(false), python(nullptr), interpreter(nullptr),
+                                                  p_runner(nullptr)
 #ifdef USE_BLOCKING
-                                                  ,timer(_self)
+                                                , timer(_self)
+#else
+                                                , qrunner(nullptr)
 #endif
 {
 }
@@ -114,33 +118,16 @@ bool PythonProcess::blocking_poll()
     return false;
 }
 
-void PythonProcess::onSigOptionsParsed(OptionManager *_om)
-{
-    DEBUG_PRINT();
-    if(_om->count("--jupyter-connection")) {
-        auto op = _om->get_option("--jupyter-connection");
-        connection_file = op->as<std::string>();
-        DEBUG_STREAM(" jupyter-connection:" << connection_file);
-        impl->use_jupyter = true;
-    }
-    if (impl->use_jupyter) {
-        bool res = setupPython();
-    }
-}
-
-bool PythonProcess::initialize()
+bool PythonProcess::initialize(const std::string &connection_file)
 {
     DEBUG_PRINT();
 
     impl = new Impl(this);
 
-    auto om = OptionManager::instance();
-    om->add_option("--jupyter-connection", "connection file for jupyter");
-    om->add_flag("--use-jupyter", impl->use_jupyter, "use jupyter");
-    om->sigOptionsParsed(1).connect(
-        [this](OptionManager *_om) { onSigOptionsParsed(_om); } );
+    impl->use_jupyter = true;
+    impl->connection_file = connection_file;
 
-    return true;
+    return setupPython();
 }
 
 bool PythonProcess::finalize()
@@ -182,15 +169,15 @@ bool PythonProcess::setupPython()
     nl::json debugger_config;
     debugger_config["python"] = "choreonoid";
 
-    impl->python = dlopen("/usr/lib/x86_64-linux-gnu/libpython3.8.so", RTLD_NOW | RTLD_GLOBAL);
-    //impl->py_interpreter.reset(new pybind11::scoped_interpreter()); // using PythonPlugin
+    //impl->python = dlopen("/usr/lib/x86_64-linux-gnu/libpython3.8.so", RTLD_NOW | RTLD_GLOBAL);
+    impl->py_interpreter.reset(new pybind11::scoped_interpreter());
 
-    if (!connection_file.empty()) {
+    if (!impl->connection_file.empty()) {
         std::unique_ptr<xeus::xcontext> context = xeus::make_zmq_context();
         Impl::interpreter_ptr interpreter_(new cnoid_interpreter());
         impl->interpreter = dynamic_cast<cnoid_interpreter *>(interpreter_.get());
         impl->interpreter->process = this;
-        xeus::xconfiguration config = xeus::load_configuration(connection_file);
+        xeus::xconfiguration config = xeus::load_configuration(impl->connection_file);
         impl->kernel = Impl::kernel_ptr(new xeus::xkernel(config,
                                                           xeus::get_user_name(),
                                                           std::move(context),
@@ -229,7 +216,6 @@ bool PythonProcess::setupPython()
         std::unique_ptr<xeus::xcontext> context = xeus::make_zmq_context();
         Impl::interpreter_ptr interpreter_(new cnoid_interpreter());
         impl->interpreter = dynamic_cast<cnoid_interpreter *>(interpreter_.get());
-        //xeus::xconfiguration config = xeus::load_configuration(connection_file);
         impl->kernel = Impl::kernel_ptr(new xeus::xkernel(xeus::get_user_name(),
                                                           std::move(context),
                                                           std::move(interpreter_),
