@@ -32,7 +32,7 @@ find_package(Python3 REQUIRED)
 
 #Qt
 #find_package(Threads)
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets OpenGLWidgets)
 
 set(xeuslib xeus xeus-zmq xeus-python ${PYTHON_LIBRARY})
 
@@ -51,8 +51,12 @@ if(${CMAKE_CURRENT_SOURCE_DIR} STREQUAL ${CMAKE_SOURCE_DIR})
   add_library(${target} SHARED ${sources})
   target_link_libraries( ${target} ${xeuslib} Qt6::Core Qt6::Gui)
 
-  add_executable(test testmain.cpp)
-  target_link_libraries( test Qt6::Core Qt6::Gui Qt6::Widgets ${target} )
+  find_package(choreonoid)
+  #add_executable(test testmain.cpp)
+  add_executable(render rendermain.cpp)
+  include_directories(${CHOREONOID_INCLUDE_DIRS})
+  target_link_directories(render PUBLIC ${CHOREONOID_LIBRARY_DIRS})
+  target_link_libraries( render Qt6::Core Qt6::Gui Qt6::Widgets Qt6::OpenGLWidgets ${target} CnoidUtil CnoidGLSceneRenderer CnoidBase )
   ## install
   ## install(FILES ../../share/jupyter/kernels/choreonoid/kernel.json DESTINATION ${CHOREONOID_SHARE_SUBDIR}/jupyter/kernels/choreonoid)
 else()

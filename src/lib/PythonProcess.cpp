@@ -169,7 +169,7 @@ bool PythonProcess::setupPython()
     nl::json debugger_config;
     debugger_config["python"] = "choreonoid";
 
-    //impl->python = dlopen("/usr/lib/x86_64-linux-gnu/libpython3.8.so", RTLD_NOW | RTLD_GLOBAL);
+    impl->python = dlopen("/usr/lib/x86_64-linux-gnu/libpython3.8.so", RTLD_NOW | RTLD_GLOBAL);
     impl->py_interpreter.reset(new pybind11::scoped_interpreter());
 
     if (!impl->connection_file.empty()) {
@@ -199,32 +199,30 @@ bool PythonProcess::setupPython()
                                                                                     xeus::make_file_logger(xeus::xlogger::full, "/tmp/xeus.log")), // require export XEUS_LOG=1
                                                           xpyt::make_python_debugger,
                                                           debugger_config));
-        impl->kernel->start();
-#ifdef USE_BLOCKING
-        // timered non_blocking poll
-        impl->timer.setInterval(0);
-        connect(&(impl->timer), &QTimer::timeout, this, &PythonProcess::proc);
-        impl->timer.start();
-#else
-        // non-blocking using thread
-        impl->qrunner = new Runner(impl->self);
-        connect(impl->qrunner, &Runner::sendRequest,
-                this, &PythonProcess::procRequest, Qt::BlockingQueuedConnection);
-        impl->qrunner->start();
-#endif
     } else {
         std::unique_ptr<xeus::xcontext> context = xeus::make_zmq_context();
         Impl::interpreter_ptr interpreter_(new cnoid_interpreter());
         impl->interpreter = dynamic_cast<cnoid_interpreter *>(interpreter_.get());
+        impl->interpreter->process = this;
         impl->kernel = Impl::kernel_ptr(new xeus::xkernel(xeus::get_user_name(),
                                                           std::move(context),
                                                           std::move(interpreter_),
-                                                          xeus::make_xserver_shell_main,
+                                                          [this] ( xeus::xcontext& context,
+                                                                   const xeus::xconfiguration& config,
+                                                                   nl::json::error_handler_t eh ) {
+                                                              std::unique_ptr<xeus::xshell_runner> runner = std::make_unique<xeus::non_blocking_runner>();
+                                                              this->impl->p_runner = dynamic_cast<xeus::non_blocking_runner *>(runner.get());
+                                                              return xeus::make_xserver_shell(
+                                                                  context,
+                                                                  config,
+                                                                  eh,
+                                                                  std::make_unique<xeus::xcontrol_default_runner>(),
+                                                                  std::move(runner));
+                                                          },
                                                           std::move(hist),
                                                           xeus::make_file_logger(xeus::xlogger::full, "/tmp/xeus.log"),
                                                           xpyt::make_python_debugger,
                                                           debugger_config));
-
         const auto& config = impl->kernel->get_config();
         std::cout <<
             "Starting xeus-python kernel...\n\n"
@@ -259,10 +257,20 @@ bool PythonProcess::setupPython()
             "}\n" << std::endl;
             ofs.close();
         }
-        //std::cout << "Started in Kernel pid: " << this->getpid() << ", tid: " << this->gettid() << std::endl;
-        impl->kernel->start();
     }
-
+    impl->kernel->start();
+#ifdef USE_BLOCKING
+    // timered non_blocking poll
+    impl->timer.setInterval(0);
+    connect(&(impl->timer), &QTimer::timeout, this, &PythonProcess::proc);
+    impl->timer.start();
+#else
+    // non-blocking using thread
+    impl->qrunner = new Runner(impl->self);
+    connect(impl->qrunner, &Runner::sendRequest,
+            this, &PythonProcess::procRequest, Qt::BlockingQueuedConnection);
+    impl->qrunner->start();
+#endif
     return true;
 }
 
