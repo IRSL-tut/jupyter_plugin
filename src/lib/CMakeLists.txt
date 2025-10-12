@@ -10,10 +10,12 @@ set(target CnoidJupyter)
 set(sources
   PythonProcess.cpp
   cnoid_interpreter.cpp
+  myscene.cpp
   )
 set(headers
   PythonProcess.h
   cnoid_interpreter.hpp
+  myscene.h
   )
 if (NOT WIN32)
   add_definitions(-Wno-deprecated-declarations)
@@ -40,23 +42,33 @@ add_definitions(-DUSE_XEUS5)
 message("using XEUS5 : ${xeus_VERSION} / ${xeuslib}")
 
 ## for Qt signal
-set(qtheaders PythonProcess.h)
+set(qtheaders PythonProcess.h myscene.h)
 #choreonoid_qt_wrap_cpp(qtsources ${qtheaders})
 qt6_wrap_cpp(qtsources ${qtheaders})
 
 set(sources ${sources} ${qtsources})
 
 if(${CMAKE_CURRENT_SOURCE_DIR} STREQUAL ${CMAKE_SOURCE_DIR})
+  find_package(choreonoid)
+
   # Build as a master project
   add_library(${target} SHARED ${sources})
-  target_link_libraries( ${target} ${xeuslib} Qt6::Core Qt6::Gui)
+  target_link_directories(${target} PUBLIC ${CHOREONOID_LIBRARY_DIRS})
+  target_link_libraries( ${target} ${xeuslib} Qt6::Core Qt6::Gui Qt6::OpenGLWidgets CnoidUtil CnoidGLSceneRenderer CnoidBase )
 
-  find_package(choreonoid)
   #add_executable(test testmain.cpp)
-  add_executable(render rendermain.cpp)
+  add_executable(render rendermain.cpp )
   include_directories(${CHOREONOID_INCLUDE_DIRS})
   target_link_directories(render PUBLIC ${CHOREONOID_LIBRARY_DIRS})
-  target_link_libraries( render Qt6::Core Qt6::Gui Qt6::Widgets Qt6::OpenGLWidgets ${target} CnoidUtil CnoidGLSceneRenderer CnoidBase )
+  target_link_libraries( render Qt6::Core Qt6::Gui Qt6::Widgets  ${target} CnoidBase)
+
+  add_cnoid_python_module(PyMyScene PyMyScene.cpp)
+  target_link_directories(PyMyScene PUBLIC ${CHOREONOID_LIBRARY_DIRS})
+  target_link_libraries(PyMyScene
+    ${target}
+    CnoidUtil
+    CnoidGLSceneRenderer
+  )
   ## install
   ## install(FILES ../../share/jupyter/kernels/choreonoid/kernel.json DESTINATION ${CHOREONOID_SHARE_SUBDIR}/jupyter/kernels/choreonoid)
 else()

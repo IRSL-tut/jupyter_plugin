@@ -1,0 +1,24 @@
+
+source ../../../reset.sh
+source ../../../em_ws/install/setup.bash
+export PYTHONPATH=$PYTHONPATH:$(pwd)/build/lib/choreonoid-2.3
+
+build/render
+
+jupyter console --existing=/tmp/kernel.json
+#python3
+
+import cnoid.Util
+import python.cnoid.MyScene as ms
+r=ms.renderer()
+cam=cnoid.Util.SgPerspectiveCamera()
+
+###
+source /opt/ros/${ROS_DISTRO}/setup.bash
+colcon build --parallel-workers 1 --merge-install --event-handlers console_direct+ desktop_notification- log_command+ status- --packages-up-to irsl_choreonoid
+
+SceneRenderer
+scene : (child of sceneRoot) / to where objects is add
+sceneRoot : top of SceneGraph
+
+
