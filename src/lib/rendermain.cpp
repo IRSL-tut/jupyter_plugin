@@ -3,8 +3,7 @@
 #include <QApplication>
 #include <QSurfaceFormat>
 
-#define USE_MYSCENE 0
-#if USE_MYSCENE
+#if defined(USE_MYSCENE) && USE_MYSCENE
 #include "myscene.h"
 #else
 #include <cnoid/GLSceneRenderer>
@@ -17,7 +16,7 @@
 #include <iostream>
 #include <string>
 
-#if USE_MYSCENE
+#if defined(USE_MYSCENE) && USE_MYSCENE
 #else
 class MyConfig : public cnoid::SceneWidgetConfig
 {
@@ -44,7 +43,7 @@ int main(int argc, char **argv)
     QApplication a(argc, argv);
 
     std::cerr << "widget" << std::endl;
-#if USE_MYSCENE
+#if defined(USE_MYSCENE) && USE_MYSCENE
     MySceneWidget *ww = MySceneWidget::create(nullptr);
 #else
     cnoid::SceneWidget *ww = new cnoid::SceneWidget(nullptr);
