@@ -77,7 +77,7 @@ public:
     xeus::non_blocking_runner* p_runner;
 
     bool use_jupyter;
-
+    std::string initialization_script;
 #ifdef USE_BLOCKING
     QTimer timer;
 #else
@@ -88,7 +88,7 @@ public:
 }
 
 PythonProcess::Impl::Impl(PythonProcess *_self) : self(_self), interpreter(nullptr), python(nullptr),
-                                                  p_runner(nullptr), use_jupyter(false)
+                                                  p_runner(nullptr), use_jupyter(false), initialization_script("")
 #ifdef USE_BLOCKING
                                                   ,timer(_self)
 #endif
@@ -120,6 +120,11 @@ bool PythonProcess::blocking_poll()
 void PythonProcess::onSigOptionsParsed(OptionManager *_om)
 {
     DEBUG_PRINT();
+    if(_om->count("--jupyter-initialization-script")) {
+        auto op = _om->get_option("--jupyter-initialization-script");
+        impl->initialization_script = op->as<std::string>();
+        DEBUG_STREAM(" jupyter-initalization-script:" << impl->initialization_script);
+    }
     if(_om->count("--jupyter-connection")) {
         auto op = _om->get_option("--jupyter-connection");
         connection_file = op->as<std::string>();
@@ -139,6 +144,7 @@ bool PythonProcess::initialize()
 
     auto om = OptionManager::instance();
     om->add_option("--jupyter-connection", "connection file for jupyter");
+    om->add_option("--jupyter-initialization-script", "script file before starting jupyter");
     om->add_flag("--use-jupyter", impl->use_jupyter, "use jupyter");
     om->sigOptionsParsed(1).connect(
         [this](OptionManager *_om) { onSigOptionsParsed(_om); } );
@@ -306,7 +312,19 @@ bool PythonProcess::setupPython()
             this, &PythonProcess::procRequest, Qt::BlockingQueuedConnection);
     impl->qrunner->start();
 #endif
-
+    if (impl->initialization_script.size() > 0) {
+        std::ifstream init_file(impl->initialization_script);
+        if (init_file) {
+            py::gil_scoped_acquire acquire;
+            std::ostringstream buffer;
+            buffer << init_file.rdbuf();
+            const std::string script_content = buffer.str();
+            INFO_STREAM(" init script: " << impl->initialization_script);
+            impl->interpreter->python_shell().attr("run_cell")(script_content);
+        } else {
+            ERROR_STREAM(" failed to open initialization script: " << impl->initialization_script);
+        }
+    }
     return true;
 }
 
