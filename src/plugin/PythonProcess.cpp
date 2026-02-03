@@ -31,8 +31,10 @@
 #include "cnoid_interpreter.hpp"
 #include "non_blocking_runner.hpp"
 
+#if !defined(_WIN32)
 // HOTFIX
 #include <dlfcn.h>
+#endif
 
 // for shutdown
 #include <QCoreApplication>
@@ -43,10 +45,11 @@
 #include "irsl_debug.h"
 #include <fstream>
 #include <sstream>
+#if !defined(_WIN32)
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/syscall.h>
-
+#endif
 using namespace cnoid;
 
 namespace filesystem = cnoid::stdx::filesystem;
@@ -74,7 +77,7 @@ public:
     xeus::non_blocking_runner* p_runner;
 
     bool use_jupyter;
-
+    std::string initialization_script;
 #ifdef USE_BLOCKING
     QTimer timer;
 #else
@@ -85,7 +88,7 @@ public:
 }
 
 PythonProcess::Impl::Impl(PythonProcess *_self) : self(_self), interpreter(nullptr), python(nullptr),
-                                                  p_runner(nullptr), use_jupyter(false)
+                                                  p_runner(nullptr), use_jupyter(false), initialization_script("")
 #ifdef USE_BLOCKING
                                                   ,timer(_self)
 #endif
@@ -117,6 +120,11 @@ bool PythonProcess::blocking_poll()
 void PythonProcess::onSigOptionsParsed(OptionManager *_om)
 {
     DEBUG_PRINT();
+    if(_om->count("--jupyter-initialization-script")) {
+        auto op = _om->get_option("--jupyter-initialization-script");
+        impl->initialization_script = op->as<std::string>();
+        DEBUG_STREAM(" jupyter-initalization-script:" << impl->initialization_script);
+    }
     if(_om->count("--jupyter-connection")) {
         auto op = _om->get_option("--jupyter-connection");
         connection_file = op->as<std::string>();
@@ -136,6 +144,7 @@ bool PythonProcess::initialize()
 
     auto om = OptionManager::instance();
     om->add_option("--jupyter-connection", "connection file for jupyter");
+    om->add_option("--jupyter-initialization-script", "script file before starting jupyter");
     om->add_flag("--use-jupyter", impl->use_jupyter, "use jupyter");
     om->sigOptionsParsed(1).connect(
         [this](OptionManager *_om) { onSigOptionsParsed(_om); } );
@@ -146,7 +155,9 @@ bool PythonProcess::initialize()
 bool PythonProcess::finalize()
 {
     DEBUG_PRINT();
+#if !defined(_WIN32)
     dlclose(impl->python);
+#endif
     return true;
 }
 
@@ -181,10 +192,16 @@ bool PythonProcess::setupPython()
 
     nl::json debugger_config;
     debugger_config["python"] = "choreonoid";
-
+#if !defined(_WIN32)
     impl->python = dlopen("/usr/lib/x86_64-linux-gnu/libpython3.8.so", RTLD_NOW | RTLD_GLOBAL);
     //impl->py_interpreter.reset(new pybind11::scoped_interpreter()); // using PythonPlugin
+#endif
 
+#if defined(_WIN32)
+    const std::string logfile("c:/tmp/xeus.log");
+#else
+    const std::string logfile("/tmp/xeus.log");
+#endif
     if (!connection_file.empty()) {
         std::unique_ptr<xeus::xcontext> context = xeus::make_zmq_context();
         Impl::interpreter_ptr interpreter_(new cnoid_interpreter());
@@ -209,33 +226,34 @@ bool PythonProcess::setupPython()
                                                           },
                                                           std::move(hist),
                                                           xeus::make_console_logger(xeus::xlogger::full,
-                                                                                    xeus::make_file_logger(xeus::xlogger::full, "/tmp/xeus.log")), // require export XEUS_LOG=1
+                                                                                    xeus::make_file_logger(xeus::xlogger::full, logfile)), // require export XEUS_LOG=1
                                                           xpyt::make_python_debugger,
                                                           debugger_config));
         impl->kernel->start();
-#ifdef USE_BLOCKING
-        // timered non_blocking poll
-        impl->timer.setInterval(0);
-        connect(&(impl->timer), &QTimer::timeout, this, &PythonProcess::proc);
-        impl->timer.start();
-#else
-        // non-blocking using thread
-        impl->qrunner = new Runner(impl->self);
-        connect(impl->qrunner, &Runner::sendRequest,
-                this, &PythonProcess::procRequest, Qt::BlockingQueuedConnection);
-        impl->qrunner->start();
-#endif
     } else {
         std::unique_ptr<xeus::xcontext> context = xeus::make_zmq_context();
         Impl::interpreter_ptr interpreter_(new cnoid_interpreter());
         impl->interpreter = dynamic_cast<cnoid_interpreter *>(interpreter_.get());
+        impl->interpreter->process = this;
         //xeus::xconfiguration config = xeus::load_configuration(connection_file);
         impl->kernel = Impl::kernel_ptr(new xeus::xkernel(xeus::get_user_name(),
                                                           std::move(context),
                                                           std::move(interpreter_),
-                                                          xeus::make_xserver_shell_main,
+                                                          [this] ( xeus::xcontext& context,
+                                                                   const xeus::xconfiguration& config,
+                                                                   nl::json::error_handler_t eh ) {
+                                                              std::unique_ptr<xeus::xshell_runner> runner = std::make_unique<xeus::non_blocking_runner>();
+                                                              this->impl->p_runner = dynamic_cast<xeus::non_blocking_runner *>(runner.get());
+                                                              return xeus::make_xserver_shell(
+                                                                  context,
+                                                                  config,
+                                                                  eh,
+                                                                  std::make_unique<xeus::xcontrol_default_runner>(),
+                                                                  std::move(runner));
+                                                          },
                                                           std::move(hist),
-                                                          xeus::make_file_logger(xeus::xlogger::full, "/tmp/xeus.log"),
+                                                          xeus::make_console_logger(xeus::xlogger::full,
+                                                                                    xeus::make_file_logger(xeus::xlogger::full, logfile)), // require export XEUS_LOG=1
                                                           xpyt::make_python_debugger,
                                                           debugger_config));
 
@@ -258,7 +276,12 @@ bool PythonProcess::setupPython()
             "}\n```"
             << std::endl;
         {
-            std::ofstream ofs("/tmp/kernel.json");
+#if defined(_WIN32)
+            const std::string kernel_filename("c:/tmp/kernel.json");
+#else
+            const std::string kernel_filename("/tmp/kernel.json");
+#endif
+            std::ofstream ofs(kernel_filename);
             ofs <<
             "{\n"
             "    \"transport\": \"" + config.m_transport + "\",\n"
@@ -277,6 +300,31 @@ bool PythonProcess::setupPython()
         impl->kernel->start();
     }
 
+#ifdef USE_BLOCKING
+    // timered non_blocking poll
+    impl->timer.setInterval(0);
+    connect(&(impl->timer), &QTimer::timeout, this, &PythonProcess::proc);
+    impl->timer.start();
+#else
+    // non-blocking using thread
+    impl->qrunner = new Runner(impl->self);
+    connect(impl->qrunner, &Runner::sendRequest,
+            this, &PythonProcess::procRequest, Qt::BlockingQueuedConnection);
+    impl->qrunner->start();
+#endif
+    if (impl->initialization_script.size() > 0) {
+        std::ifstream init_file(impl->initialization_script);
+        if (init_file) {
+            py::gil_scoped_acquire acquire;
+            std::ostringstream buffer;
+            buffer << init_file.rdbuf();
+            const std::string script_content = buffer.str();
+            INFO_STREAM(" init script: " << impl->initialization_script);
+            impl->interpreter->python_shell().attr("run_cell")(script_content);
+        } else {
+            ERROR_STREAM(" failed to open initialization script: " << impl->initialization_script);
+        }
+    }
     return true;
 }
 
