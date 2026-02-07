@@ -1,5 +1,6 @@
 #include "JupyterPlugin.h"
 #include "PythonProcess.h"
+#include "JupyterBar.h"
 #include <fmt/format.h>
 //#define IRSL_DEBUG
 #include "irsl_debug.h"
@@ -39,6 +40,7 @@ bool JupyterPlugin::customizeApplication(AppCustomizationUtil& app)
 bool JupyterPlugin::initialize()
 {
     DEBUG_PRINT();
+    addToolBar(JupyterBar::instance());
     if(!!impl) {
         return impl->initialize();
     } else {

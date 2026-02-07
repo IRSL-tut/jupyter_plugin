@@ -4,11 +4,15 @@ set(sources
   JupyterPlugin.cpp
   PythonProcess.cpp
   cnoid_interpreter.cpp
+  #
+  JupyterBar.cpp
   )
 set(headers
   JupyterPlugin.h
   PythonProcess.h
   cnoid_interpreter.hpp
+  #
+  JupyterBar.h
   )
 if (NOT WIN32)
   add_definitions(-Wno-deprecated-declarations)
@@ -58,6 +62,8 @@ else()
   add_definitions(-DEXT_BUNDLE)
   choreonoid_add_plugin(${target} ${sources} HEADERS ${headers})
   target_link_libraries(${target} PUBLIC CnoidUtil ${xeuslib} Threads::Threads)
+  ## pybind11
+  add_subdirectory(pybind11)
   ## install
   install(FILES ../../share/jupyter/kernels/choreonoid/kernel.json DESTINATION ${CHOREONOID_SHARE_SUBDIR}/jupyter/kernels/choreonoid)
 endif()
