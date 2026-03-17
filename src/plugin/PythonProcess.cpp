@@ -164,6 +164,17 @@ bool PythonProcess::finalize()
 void PythonProcess::shutdown_impl()
 {
     DEBUG_PRINT();
+    INFO_STREAM(" kill python");
+    {
+        py::gil_scoped_acquire acquire;
+        //py::module atexit = py::module::import("atexit");
+        //atexit.attr("_run_exitfuncs")();
+        try {
+            const std::string script_content = "import atexit; atexit._run_exitfuncs()";
+            impl->interpreter->python_shell().attr("run_cell")(script_content);
+        } catch (...) {
+        }
+    }
     INFO_STREAM(" shutdown_impl");
     impl->kernel->get_server().stop();
     INFO_STREAM(" shutdown_impl::stopped");
