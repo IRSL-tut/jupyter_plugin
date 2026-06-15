@@ -17,6 +17,8 @@ public:
     bool addUserToggleButton(const std::string &name);
     long getUserButton(const std::string &name);
     bool getUserButtonState(const std::string &name);
+    SignalProxy<void()> sigClicked(const std::string &name);
+    SignalProxy<void(bool)> sigToggled(const std::string &name);
 private:
     JupyterBar();
 

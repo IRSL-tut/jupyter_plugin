@@ -1,4 +1,5 @@
 #include <cnoid/PyUtil>
+#include <cnoid/PySignal>
 
 #include "../JupyterBar.h"
 
@@ -16,5 +17,8 @@ PYBIND11_MODULE(JupyterPlugin, m)
         .def("addUserButton", &JupyterBar::addUserButton)
         .def("addUserToggleButton", &JupyterBar::addUserToggleButton)
         .def("getUserButton", &JupyterBar::getUserButton)
-        .def("getUserButtonState", &JupyterBar::getUserButtonState);
+        .def("getUserButtonState", &JupyterBar::getUserButtonState)
+        .def("sigClicked", &JupyterBar::sigClicked)
+        .def("sigToggled", &JupyterBar::sigToggled)
+    ;
 }

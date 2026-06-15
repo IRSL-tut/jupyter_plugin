@@ -144,3 +144,19 @@ bool JupyterBar::getUserButtonState(const std::string &name)
     }
     return bt->state;
 }
+SignalProxy<void()> JupyterBar::sigClicked(const std::string &name)
+{
+    ButtonClass *bt = impl->findButton(name);
+    if (!bt) {
+        throw std::runtime_error("Button not found: " + name);
+    }
+    return bt->self->sigClicked();
+}
+SignalProxy<void(bool)> JupyterBar::sigToggled(const std::string &name)
+{
+    ButtonClass *bt = impl->findButton(name);
+    if (!bt) {
+        throw std::runtime_error("Button not found: " + name);
+    }
+    return bt->self->sigToggled();
+}
