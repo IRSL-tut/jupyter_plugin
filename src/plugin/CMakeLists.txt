@@ -30,15 +30,19 @@ find_package(xeus ${xeus_REQUIRED_VERSION} REQUIRED)
 find_package(Threads)
 
 ### using XEUS5
-find_package(xeus  REQUIRED)
-find_package(xeus-zmq  REQUIRED)
+find_package(xeus REQUIRED)
+find_package(xeus-zmq REQUIRED)
 find_package(xeus-python REQUIRED)
 find_package(Python3 REQUIRED)
 
 set(xeuslib xeus xeus-zmq xeus-python ${PYTHON_LIBRARY})
 
+message("using XEUS : ${xeus_VERSION} / ${xeuslib}")
+message("using XEUS-PYTHON : ${xeus-python_VERSION}")
+if ( ${xeus_VERSION} VERSION_GREATER_EQUAL "6.0.0" )
+  add_definitions(-DUSE_XEUS6)
+endif()
 add_definitions(-DUSE_XEUS5)
-message("using XEUS5 : ${xeus_VERSION} / ${xeuslib}")
 
 ## for Qt signal
 set(qtheaders PythonProcess.h)

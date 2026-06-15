@@ -17,8 +17,11 @@ public:
 protected:
     nl::json kernel_info_request_impl() override;
     nl::json is_complete_request_impl(const std::string& code) override;
+#ifdef USE_XEUS6
+    nl::json shutdown_request_impl(bool restart) override;
+#else
     void shutdown_request_impl() override;
-
+#endif
 };
 
 }

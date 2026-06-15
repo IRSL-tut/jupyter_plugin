@@ -4,6 +4,7 @@
 
 #include "xeus/xinterpreter.hpp"
 #include "xeus/xsystem.hpp"
+#include "xeus/xhelper.hpp"
 
 #include "pybind11/pybind11.h"
 #include "pybind11/functional.h"
@@ -110,12 +111,18 @@ nl::json cnoid_interpreter::is_complete_request_impl(const std::string& code)
 #endif
     return kernel_res;
 }
-
+#ifdef USE_XEUS6
+nl::json cnoid_interpreter::shutdown_request_impl(bool restart)
+#else
 void cnoid_interpreter::shutdown_request_impl()
+#endif
 {
     std::cerr << "shutdown_request_impl" << std::endl;
     if (!!process) {
         std::cerr << "call shutdown_impl()" << std::endl;
         process->shutdown_impl();
     }
+#ifdef USE_XEUS6
+    return xeus::create_shutdown_reply(false);
+#endif
 }
