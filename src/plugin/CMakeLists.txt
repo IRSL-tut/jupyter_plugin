@@ -65,7 +65,7 @@ else()
   ## build
   add_definitions(-DEXT_BUNDLE)
   choreonoid_add_plugin(${target} ${sources} HEADERS ${headers})
-  target_link_libraries(${target} PUBLIC CnoidUtil ${xeuslib} Threads::Threads)
+  target_link_libraries(${target} PUBLIC ${PYTHON_LIBRARIES} ${xeuslib} Threads::Threads)
   ## pybind11
   add_subdirectory(pybind11)
   ## install
