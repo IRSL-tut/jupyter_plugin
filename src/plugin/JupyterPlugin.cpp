@@ -1,7 +1,7 @@
 #include "JupyterPlugin.h"
 #include "PythonProcess.h"
 #include "JupyterBar.h"
-#include <fmt/format.h>
+#include <cnoid/Format>
 //#define IRSL_DEBUG
 #include "irsl_debug.h"
 
@@ -60,7 +60,7 @@ bool JupyterPlugin::finalize()
 const char* JupyterPlugin::description() const
 {
     static std::string text =
-        fmt::format("Jupyter Plugin (xeus-python) Version {}\n", CNOID_FULL_VERSION_STRING) +
+        formatC("Jupyter Plugin (xeus-python) Version {}\n", CNOID_FULL_VERSION_STRING) +
         "\n" +
         "Copyrigh (c) 2025 IRSL-tut Development Team.\n"
         "\n" +
